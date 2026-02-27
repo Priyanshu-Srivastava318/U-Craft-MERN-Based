@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapPin, Star, Package, Instagram, Globe } from 'lucide-react';
+import { MapPin, Star, Instagram, Globe } from 'lucide-react';
 import axios from 'axios';
 import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
@@ -27,7 +27,7 @@ export default function ArtistProfile() {
 
   if (!data) return <div className="text-center py-20 font-display text-2xl">Artist not found</div>;
 
-  const { artist, products, reviews } = data;
+  const { artist, products = [], reviews = [] } = data;
 
   const ratingBreakdown = [5, 4, 3, 2, 1].map(n => ({
     star: n,
@@ -37,15 +37,11 @@ export default function ArtistProfile() {
 
   return (
     <div className="page-enter">
-      {/* Cover */}
       <div className="h-56 sm:h-72 bg-gradient-to-br from-craft-200 to-stone-300 relative overflow-hidden">
-        {artist.coverImage && (
-          <img src={artist.coverImage} alt="" className="w-full h-full object-cover" />
-        )}
+        {artist.coverImage && <img src={artist.coverImage} alt="" className="w-full h-full object-cover" />}
         <div className="absolute inset-0 bg-ink-900/30" />
       </div>
 
-      {/* Profile info */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative -mt-16 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-end gap-4">
@@ -63,8 +59,6 @@ export default function ArtistProfile() {
                 {artist.specialty && <span className="text-craft-600 font-medium">{artist.specialty}</span>}
               </div>
             </div>
-
-            {/* Socials */}
             <div className="flex gap-3 sm:mb-2">
               {artist.socialLinks?.instagram && (
                 <a href={artist.socialLinks.instagram} target="_blank" rel="noopener noreferrer"
@@ -82,7 +76,6 @@ export default function ArtistProfile() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             [products.length, 'Products'],
@@ -103,7 +96,6 @@ export default function ArtistProfile() {
           </div>
         )}
 
-        {/* Tabs */}
         <div className="flex border-b border-stone-200 mb-8 gap-6">
           {['products', 'reviews'].map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -126,7 +118,6 @@ export default function ArtistProfile() {
 
         {tab === 'reviews' && (
           <div className="mb-16">
-            {/* Rating summary */}
             {reviews.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10 max-w-lg">
                 <div className="text-center">
@@ -148,7 +139,6 @@ export default function ArtistProfile() {
                 </div>
               </div>
             )}
-
             <div className="space-y-5 max-w-2xl">
               {reviews.length === 0 ? (
                 <p className="font-body text-stone-400">No reviews yet</p>

@@ -9,7 +9,7 @@ export default function Artists() {
 
   useEffect(() => {
     axios.get('/api/artists')
-      .then(({ data }) => setArtists(data))
+      .then(({ data }) => setArtists(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -26,9 +26,7 @@ export default function Artists() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 skeleton" />
-          ))}
+          {[...Array(6)].map((_, i) => <div key={i} className="h-64 skeleton" />)}
         </div>
       ) : artists.length === 0 ? (
         <div className="text-center py-20">
@@ -39,7 +37,6 @@ export default function Artists() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {artists.map(artist => (
             <Link key={artist._id} to={`/artist/${artist._id}`} className="group card overflow-hidden">
-              {/* Cover */}
               <div className="h-40 bg-gradient-to-br from-craft-100 to-stone-200 overflow-hidden relative">
                 {artist.coverImage ? (
                   <img src={artist.coverImage} alt={artist.brandName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -49,8 +46,6 @@ export default function Artists() {
                   </div>
                 )}
               </div>
-
-              {/* Info */}
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div>
@@ -61,24 +56,15 @@ export default function Artists() {
                     <span className="bg-sage-100 text-sage-500 text-xs font-body px-2 py-1">Verified</span>
                   )}
                 </div>
-
-                {artist.specialty && (
-                  <p className="font-body text-sm text-craft-600 mt-2">{artist.specialty}</p>
-                )}
-
+                {artist.specialty && <p className="font-body text-sm text-craft-600 mt-2">{artist.specialty}</p>}
                 <div className="flex items-center gap-4 mt-3 text-xs text-stone-500 font-body">
-                  {artist.location && (
-                    <span className="flex items-center gap-1"><MapPin size={11} /> {artist.location}</span>
-                  )}
+                  {artist.location && <span className="flex items-center gap-1"><MapPin size={11} /> {artist.location}</span>}
                   <span className="flex items-center gap-1"><Package size={11} /> {artist.totalSales} sold</span>
                   {artist.averageRating > 0 && (
                     <span className="flex items-center gap-1"><Star size={11} className="text-amber-400 fill-amber-400" /> {Number(artist.averageRating).toFixed(1)}</span>
                   )}
                 </div>
-
-                {artist.bio && (
-                  <p className="font-body text-sm text-stone-500 mt-3 line-clamp-2 leading-relaxed">{artist.bio}</p>
-                )}
+                {artist.bio && <p className="font-body text-sm text-stone-500 mt-3 line-clamp-2 leading-relaxed">{artist.bio}</p>}
               </div>
             </Link>
           ))}

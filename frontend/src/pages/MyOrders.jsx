@@ -20,7 +20,7 @@ export default function MyOrders() {
 
   useEffect(() => {
     axios.get('/api/orders/my-orders')
-      .then(({ data }) => setOrders(data))
+      .then(({ data }) => setOrders(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -34,7 +34,6 @@ export default function MyOrders() {
   return (
     <div className="page-enter max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="section-title mb-8">My Orders</h1>
-
       {orders.length === 0 ? (
         <div className="text-center py-20">
           <ShoppingBag size={48} className="text-stone-300 mx-auto mb-4" />
@@ -60,7 +59,6 @@ export default function MyOrders() {
                   </div>
                 </div>
 
-                {/* Progress */}
                 {order.orderStatus !== 'cancelled' && (
                   <div className="px-6 py-4 border-b border-stone-100">
                     <div className="flex items-center justify-between">
@@ -83,7 +81,6 @@ export default function MyOrders() {
                   </div>
                 )}
 
-                {/* Items */}
                 <div className="px-6 py-4 space-y-3">
                   {order.items?.map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -96,7 +93,6 @@ export default function MyOrders() {
                   ))}
                 </div>
 
-                {/* Footer */}
                 <div className="px-6 py-3 bg-stone-50 border-t border-stone-100 text-xs font-body text-stone-500">
                   Ship to: {order.shippingAddress?.name}, {order.shippingAddress?.city}, {order.shippingAddress?.state} — {order.shippingAddress?.pincode}
                 </div>

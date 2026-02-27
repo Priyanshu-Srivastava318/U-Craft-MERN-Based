@@ -10,7 +10,7 @@ export default function Wishlist() {
 
   useEffect(() => {
     axios.get('/api/users/wishlist')
-      .then(({ data }) => setItems(data))
+      .then(({ data }) => setItems(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
