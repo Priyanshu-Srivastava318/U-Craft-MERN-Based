@@ -79,9 +79,8 @@ export default function Checkout() {
   return (
     <div className="page-enter max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="section-title mb-8">Checkout</h1>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Form */}
+
         <form onSubmit={handleOrder} className="space-y-5">
           <div className="bg-white border border-stone-200 p-6">
             <h2 className="font-display text-lg text-ink-900 mb-4">Shipping Address</h2>
@@ -136,8 +135,8 @@ export default function Checkout() {
 
           <div className="bg-white border border-stone-200 p-6">
             <label className="label-sm block mb-2">Order Notes (optional)</label>
-            <textarea className="input resize-none min-h-20" placeholder="Any special instructions..." value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })} />
+            <textarea className="input resize-none min-h-20" placeholder="Any special instructions..."
+              value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full text-center disabled:opacity-60">
@@ -145,7 +144,6 @@ export default function Checkout() {
           </button>
         </form>
 
-        {/* Order summary */}
         <div className="lg:sticky lg:top-20 h-fit">
           <div className="bg-white border border-stone-200 p-6">
             <h2 className="font-display text-lg text-ink-900 mb-4">Order Summary</h2>

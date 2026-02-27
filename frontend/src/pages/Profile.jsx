@@ -4,7 +4,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const { user, fetchMe } = useAuth();
+  const { user, updateUser } = useAuth(); // fetchMe nahi hai — updateUser use karo
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -23,8 +23,9 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put('/api/auth/profile', form);
-      await fetchMe();
+      const { data } = await axios.put('/api/auth/profile', form);
+      // updateUser se context aur localStorage dono update ho jayenge
+      updateUser(data.user || { ...user, ...form });
       toast.success('Profile updated!');
     } catch {
       toast.error('Failed to update');

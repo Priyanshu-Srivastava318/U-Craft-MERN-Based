@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShoppingBag, Heart, Share2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +19,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const { user } = useAuth();
 
-  useEffect(() => {
-    fetchProduct();
-  }, [id]);
+  useEffect(() => { fetchProduct(); }, [id]);
 
   const fetchProduct = async () => {
     try {
@@ -30,8 +28,8 @@ export default function ProductDetail() {
         axios.get(`/api/reviews/product/${id}`)
       ]);
       setProduct(productRes.data);
-      setReviews(reviewsRes.data);
-    } catch (err) {
+      setReviews(Array.isArray(reviewsRes.data) ? reviewsRes.data : []);
+    } catch {
       toast.error('Product not found');
     } finally {
       setLoading(false);
@@ -83,6 +81,7 @@ export default function ProductDetail() {
   return (
     <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+
         {/* Images */}
         <div>
           <div className="relative aspect-square bg-stone-100 overflow-hidden mb-3">
@@ -137,7 +136,6 @@ export default function ProductDetail() {
 
           <p className="font-body text-stone-600 leading-relaxed mb-6">{product.description}</p>
 
-          {/* Specs */}
           {product.specifications && Object.values(product.specifications).some(Boolean) && (
             <div className="bg-stone-50 border border-stone-200 p-4 mb-6">
               <p className="label-sm mb-3">Specifications</p>
@@ -152,7 +150,6 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Qty + Add to cart */}
           {product.stock > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -168,9 +165,7 @@ export default function ProductDetail() {
                 <button onClick={handleAddToCart} className="btn-primary flex-1 flex items-center justify-center gap-2">
                   <ShoppingBag size={16} /> Add to Cart
                 </button>
-                <button className="btn-outline !px-3">
-                  <Heart size={18} />
-                </button>
+                <button className="btn-outline !px-3"><Heart size={18} /></button>
               </div>
             </div>
           ) : (
@@ -179,7 +174,6 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Artist mini card */}
           <Link to={`/artist/${product.artist?._id}`} className="mt-8 flex items-center gap-3 p-4 border border-stone-200 hover:border-craft-400 transition-colors block">
             <div className="w-12 h-12 rounded-full bg-craft-100 flex items-center justify-center font-display text-craft-600 text-lg font-bold">
               {product.artist?.brandName?.[0]}
@@ -197,7 +191,6 @@ export default function ProductDetail() {
       <div className="border-t border-stone-200 pt-12">
         <h2 className="section-title mb-8">Reviews</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Write review */}
           <div className="lg:col-span-1">
             <h3 className="font-display text-xl text-ink-900 mb-4">Write a Review</h3>
             {user && user.role === 'user' ? (
@@ -224,7 +217,6 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Reviews list */}
           <div className="lg:col-span-2 space-y-4">
             {reviews.length === 0 ? (
               <p className="font-body text-stone-400">No reviews yet. Be the first!</p>
