@@ -9,31 +9,59 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// ── Allowed origins ──
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.CLIENT_URL,   // Railway Variable se aayega
+].filter(Boolean);           // undefined / empty values hata do
+
+// ── Socket.io ──
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST']
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true,
   }
 });
 
-// Middleware
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+// ── CORS Middleware ──
+app.use(cors({
+  origin: (origin, callback) => {
+    // Postman / server-to-server requests (origin === undefined) allow karo
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked: ${origin}`);
+      callback(new Error(`CORS policy: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+}));
+
+// ── Body Parsers ──
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Make io accessible to routes
+// ── Make io accessible to routes ──
 app.set('io', io);
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
+// ── Routes ──
+app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/cart', require('./routes/cart'));
-app.use('/api/artists', require('./routes/artists'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/orders',   require('./routes/orders'));
+app.use('/api/cart',     require('./routes/cart'));
+app.use('/api/artists',  require('./routes/artists'));
+app.use('/api/users',    require('./routes/users'));
+app.use('/api/reviews',  require('./routes/reviews'));
 
-// Socket.io
+// ── Health check (optional but useful) ──
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// ── Socket.io Events ──
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -50,12 +78,13 @@ io.on('connection', (socket) => {
   });
 });
 
-// MongoDB connection
+// ── MongoDB + Server Start ──
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected successfully');
     server.listen(process.env.PORT || 5000, () => {
       console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
+      console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
     });
   })
   .catch((err) => {

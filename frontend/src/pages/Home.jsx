@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 
@@ -73,8 +73,8 @@ export default function Home() {
   const ctaRef     = useReveal();
 
   useEffect(() => {
-    axios.get('/api/products?limit=4&sort=popular')
-      .then(({ data }) => setProducts(data.products ?? data ?? []))
+    api.get('/products?limit=4&sort=popular')
+      .then(({ data }) => setProducts(Array.isArray(data) ? data : data.products ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -143,11 +143,9 @@ export default function Home() {
 
                 <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:40 }}>
                   <Link to="/shop" className="ucbp">Explore the Shop <ArrowRight size={13}/></Link>
-                  {/* Only show "Meet the Artisans" to guests or regular users */}
                   {!isArtist && (
                     <Link to="/artists" className="ucbo">Meet the Artisans</Link>
                   )}
-                  {/* Artist sees "Go to Dashboard" instead */}
                   {isArtist && (
                     <Link to="/artist/dashboard" className="ucbo">My Dashboard</Link>
                   )}
@@ -305,7 +303,7 @@ export default function Home() {
           )}
         </section>
 
-        {/* ══ ARTIST CTA — only shown to guests or regular users, NOT to artists or logged-in users ══ */}
+        {/* ══ ARTIST CTA — only shown to guests ══ */}
         {!user && (
           <section style={{ padding:'0 40px 80px' }}>
             <div ref={ctaRef} data-reveal className="uc-ctabg uc-cg" style={{ maxWidth:1280, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr' }}>
@@ -345,7 +343,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* ══ LOGGED-IN USER CTA — shop more ══ */}
+        {/* ══ LOGGED-IN USER CTA ══ */}
         {user && !isArtist && (
           <section style={{ padding:'0 40px 80px' }}>
             <div ref={ctaRef} data-reveal style={{

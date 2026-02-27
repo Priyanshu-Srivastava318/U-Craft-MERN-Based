@@ -2,11 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, ShoppingBag, Star, TrendingUp,
-  Plus, Edit2, Trash2, Eye, Bell, Upload, X, ImagePlus
+  Plus, Edit2, Trash2, Eye, Bell, X, ImagePlus
 } from 'lucide-react';
-import axios from 'axios';
-
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -69,7 +67,6 @@ function ImageUploadZone({ images, onChange }) {
         />
       </div>
 
-      {/* Preview grid */}
       {images.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
           {images.map((img, i) => (
@@ -125,8 +122,8 @@ export default function ArtistDashboard() {
     name: '', description: '', price: '', comparePrice: '',
     category: 'Pottery', stock: '', tags: '',
     specifications: { material: '', dimensions: '', weight: '', color: '', customizable: false },
-    imageFiles: [],       // new File objects
-    existingImages: [],   // already-uploaded URLs (edit mode)
+    imageFiles: [],
+    existingImages: [],
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -148,9 +145,9 @@ export default function ArtistDashboard() {
     finally { setLoading(false); }
   };
 
-  const fetchStats    = async () => { const { data } = await axios.get('/api/artists/dashboard/stats'); setStats(data); };
-  const fetchProducts = async () => { const { data } = await axios.get('/api/products/artist/my-products'); setProducts(data); };
-  const fetchOrders   = async () => { const { data } = await axios.get('/api/orders/artist-orders'); setOrders(data); };
+  const fetchStats    = async () => { const { data } = await api.get('/artists/dashboard/stats'); setStats(data); };
+  const fetchProducts = async () => { const { data } = await api.get('/products/artist/my-products'); setProducts(Array.isArray(data) ? data : []); };
+  const fetchOrders   = async () => { const { data } = await api.get('/orders/artist-orders'); setOrders(Array.isArray(data) ? data : []); };
 
   /* ── form helpers ── */
   const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false); };
@@ -189,14 +186,13 @@ export default function ArtistDashboard() {
       fd.append('tags',         form.tags);
       fd.append('specifications', JSON.stringify(form.specifications));
 
-      // Attach new image files
       form.imageFiles.forEach(f => fd.append('images', f));
 
       if (editingId) {
-        await axios.put(`/api/products/${editingId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/products/${editingId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Product updated!');
       } else {
-        await axios.post('/api/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Product listed successfully!');
       }
 
@@ -214,7 +210,7 @@ export default function ArtistDashboard() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this product?')) return;
     try {
-      await axios.delete(`/api/products/${id}`);
+      await api.delete(`/products/${id}`);
       toast.success('Product deleted');
       fetchProducts(); fetchStats();
     } catch { toast.error('Failed to delete'); }
@@ -223,7 +219,7 @@ export default function ArtistDashboard() {
   /* ── order status ── */
   const handleOrderStatus = async (orderId, status) => {
     try {
-      await axios.put(`/api/orders/${orderId}/status`, { status });
+      await api.put(`/orders/${orderId}/status`, { status });
       toast.success('Order updated!');
       fetchOrders();
     } catch { toast.error('Failed to update'); }
@@ -462,7 +458,6 @@ export default function ArtistDashboard() {
                       </span>
                     </p>
 
-                    {/* Show existing images in edit mode */}
                     {editingId && form.existingImages.length > 0 && form.imageFiles.length === 0 && (
                       <div style={{ marginBottom:12 }}>
                         <p style={{ fontSize:'.75rem', color:'var(--stone)', marginBottom:8 }}>Current images:</p>
