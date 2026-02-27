@@ -1,37 +1,31 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { io } from 'socket.io-client';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]               = useState(null);
+  const [user, setUser]                   = useState(null);
   const [artistProfile, setArtistProfile] = useState(null);
-  const [socket, setSocket]           = useState(null);
-  const [loading, setLoading]         = useState(true); // true on first load
-
-  /* ── Axios: attach token to every request ── */
-  useEffect(() => {
-    const interceptor = axios.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token');
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-      return config;
-    });
-    return () => axios.interceptors.request.eject(interceptor);
-  }, []);
+  const [socket, setSocket]               = useState(null);
+  const [loading, setLoading]             = useState(true);
 
   /* ── Socket connect/disconnect based on user ── */
   useEffect(() => {
     if (user) {
-      const s = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
-        transports: ['websocket'],
-      });
+      // Socket URL = Railway base URL (without /api)
+      const socketURL = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+        .replace('/api', '');
+
+      const s = io(socketURL, { transports: ['websocket'] });
+
       s.on('connect', () => {
         if (user.role === 'artist' && artistProfile) {
           s.emit('join-artist-room', artistProfile._id);
         }
         s.emit('join-user-room', user._id);
       });
+
       setSocket(s);
       return () => s.disconnect();
     } else {
@@ -43,21 +37,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const saved = localStorage.getItem('user');
+
     if (token && saved) {
       try {
         const parsedUser = JSON.parse(saved);
         setUser(parsedUser);
-        // Silently refresh from server to get latest data
-        axios.get('/api/auth/me')
+
+        // Silently refresh from server
+        api.get('/auth/me')
           .then(({ data }) => {
             setUser(data.user);
             setArtistProfile(data.artistProfile || null);
             localStorage.setItem('user', JSON.stringify(data.user));
           })
-          .catch(() => {
-            // Token expired — clear everything
-            clearSession();
-          })
+          .catch(() => clearSession())
           .finally(() => setLoading(false));
       } catch {
         clearSession();
@@ -77,14 +70,13 @@ export function AuthProvider({ children }) {
 
   /* ── Login ── */
   const login = useCallback(async (email, password) => {
-    const { data } = await axios.post('/api/auth/login', { email, password });
+    const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
 
-    // Fetch artist profile if needed
     if (data.user.role === 'artist') {
-      const meRes = await axios.get('/api/auth/me');
+      const meRes = await api.get('/auth/me');
       setArtistProfile(meRes.data.artistProfile || null);
     }
 
@@ -93,13 +85,13 @@ export function AuthProvider({ children }) {
 
   /* ── Register ── */
   const register = useCallback(async (formData) => {
-    const { data } = await axios.post('/api/auth/register', formData);
+    const { data } = await api.post('/auth/register', formData);
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
 
     if (data.user.role === 'artist') {
-      const meRes = await axios.get('/api/auth/me');
+      const meRes = await api.get('/auth/me');
       setArtistProfile(meRes.data.artistProfile || null);
     }
 
@@ -111,7 +103,7 @@ export function AuthProvider({ children }) {
     clearSession();
   }, []);
 
-  /* ── Update user (profile update ke baad call karo) ── */
+  /* ── Update user ── */
   const updateUser = useCallback((updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -128,10 +120,9 @@ export function AuthProvider({ children }) {
     updateUser,
     isAuthenticated: !!user,
     isArtist: user?.role === 'artist',
-    isUser: user?.role === 'user',
+    isUser:   user?.role === 'user',
   };
 
-  // Don't render children until we know auth state (prevents flash)
   if (loading) {
     return (
       <div style={{
