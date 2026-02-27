@@ -5,6 +5,8 @@ import {
   Plus, Edit2, Trash2, Eye, Bell, Upload, X, ImagePlus
 } from 'lucide-react';
 import axios from 'axios';
+
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
