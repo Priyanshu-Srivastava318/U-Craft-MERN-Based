@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #fdf8f3;
+    color: #1a1208;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: #e48c3a; color: white; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-craft-500 hover:bg-craft-600 text-white font-body font-medium px-6 py-3 rounded-none transition-all duration-200 tracking-wide uppercase text-sm;
+  }
+  .btn-outline {
+    @apply border-2 border-craft-500 text-craft-600 hover:bg-craft-500 hover:text-white font-body font-medium px-6 py-3 rounded-none transition-all duration-200 tracking-wide uppercase text-sm;
+  }
+  .btn-dark {
+    @apply bg-ink-900 hover:bg-ink-800 text-white font-body font-medium px-6 py-3 rounded-none transition-all duration-200 tracking-wide uppercase text-sm;
+  }
+  .card {
+    @apply bg-white border border-stone-100 hover:shadow-lg transition-all duration-300;
+  }
+  .input {
+    @apply w-full border border-stone-300 px-4 py-3 font-body text-sm focus:outline-none focus:border-craft-500 transition-colors bg-white rounded-none;
+  }
+  .section-title {
+    @apply font-display text-3xl md:text-4xl text-ink-900 leading-tight;
+  }
+  .label-sm {
+    @apply font-body text-xs uppercase tracking-widest text-craft-500 font-medium;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #f5ede0 25%, #ecddc8 50%, #f5ede0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+/* ── Keyframes ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.333%); }
+}
+
+/* ── Scroll-reveal — triggered by JS setting data-visible ── */
+[data-anim] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+[data-anim][data-visible='true'] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Marquee strip ── */
+.animate-marquee {
+  animation: marquee 22s linear infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #fdf8f3; }
+::-webkit-scrollbar-thumb { background: #edb06c; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: #dc701c; }

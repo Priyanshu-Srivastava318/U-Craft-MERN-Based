@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files — KABHI PUSH MAT KARNA
+.env
+**/.env
+.env.local
+.env.production
+.env.development
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vite
+.vite/
+
+# Editor
+.vscode/
+.idea/
