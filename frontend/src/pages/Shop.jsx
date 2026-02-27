@@ -1,30 +1,33 @@
+// ═══════════════════════════════════════════
+// Shop.jsx — fixed
+// ═══════════════════════════════════════════
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, Search, X } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 
 const CATEGORIES = ['All', 'Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'];
 const SORTS = [
   { value: 'createdAt', label: 'Newest' },
-  { value: 'popular', label: 'Most Popular' },
-  { value: 'rating', label: 'Top Rated' },
+  { value: 'popular',   label: 'Most Popular' },
+  { value: 'rating',    label: 'Top Rated' },
   { value: 'price-asc', label: 'Price: Low to High' },
-  { value: 'price-desc', label: 'Price: High to Low' },
+  { value: 'price-desc',label: 'Price: High to Low' },
 ];
 
 export default function Shop() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [pages, setPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [total,    setTotal]    = useState(0);
+  const [pages,    setPages]    = useState(1);
+  const [loading,  setLoading]  = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const category = params.get('category') || 'All';
-  const sort = params.get('sort') || 'createdAt';
-  const search = params.get('search') || '';
-  const page = Number(params.get('page') || 1);
+  const sort     = params.get('sort')     || 'createdAt';
+  const search   = params.get('search')   || '';
+  const page     = Number(params.get('page') || 1);
   const minPrice = params.get('minPrice') || '';
   const maxPrice = params.get('maxPrice') || '';
 
@@ -34,16 +37,15 @@ export default function Shop() {
       try {
         const query = new URLSearchParams();
         if (category !== 'All') query.set('category', category);
-        if (sort) query.set('sort', sort);
-        if (search) query.set('search', search);
+        if (sort)     query.set('sort', sort);
+        if (search)   query.set('search', search);
         if (minPrice) query.set('minPrice', minPrice);
         if (maxPrice) query.set('maxPrice', maxPrice);
         query.set('page', page);
         query.set('limit', 12);
 
-        const { data } = await axios.get(`/api/products?${query}`);
+        const { data } = await api.get(`/products?${query}`);
 
-        // Safe handling — backend array ya object dono handle karo
         if (Array.isArray(data)) {
           setProducts(data);
           setTotal(data.length);
@@ -65,8 +67,7 @@ export default function Shop() {
 
   const setParam = (key, value) => {
     const newParams = new URLSearchParams(params);
-    if (value) newParams.set(key, value);
-    else newParams.delete(key);
+    if (value) newParams.set(key, value); else newParams.delete(key);
     newParams.delete('page');
     setParams(newParams);
   };
@@ -97,17 +98,14 @@ export default function Shop() {
         <div className="bg-white border border-stone-200 p-6 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div>
             <label className="label-sm block mb-3">Min Price (₹)</label>
-            <input type="number" className="input" placeholder="0" value={minPrice}
-              onChange={e => setParam('minPrice', e.target.value)} />
+            <input type="number" className="input" placeholder="0" value={minPrice} onChange={e => setParam('minPrice', e.target.value)} />
           </div>
           <div>
             <label className="label-sm block mb-3">Max Price (₹)</label>
-            <input type="number" className="input" placeholder="10000" value={maxPrice}
-              onChange={e => setParam('maxPrice', e.target.value)} />
+            <input type="number" className="input" placeholder="10000" value={maxPrice} onChange={e => setParam('maxPrice', e.target.value)} />
           </div>
           <div className="flex items-end">
-            <button onClick={() => { setParam('minPrice', ''); setParam('maxPrice', ''); }}
-              className="btn-outline w-full flex items-center gap-2 justify-center">
+            <button onClick={() => { setParam('minPrice',''); setParam('maxPrice',''); }} className="btn-outline w-full flex items-center gap-2 justify-center">
               <X size={14} /> Clear Filters
             </button>
           </div>

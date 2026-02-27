@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { MapPin, Star, Instagram, Globe } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
 
@@ -12,7 +12,7 @@ export default function ArtistProfile() {
   const [tab, setTab] = useState('products');
 
   useEffect(() => {
-    axios.get(`/api/artists/${id}`)
+    api.get(`/artists/${id}`)
       .then(({ data }) => setData(data))
       .catch(console.error)
       .finally(() => setLoading(false));

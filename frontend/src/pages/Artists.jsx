@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Package } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 export default function Artists() {
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('/api/artists')
+    api.get('/artists')
       .then(({ data }) => setArtists(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));

@@ -1,11 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import axios from 'axios'
 import App from './App.jsx'
 import './index.css'
 
-// ── Global axios baseURL — ek jagah set, saari files fix ──
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// ❌ REMOVED: axios.defaults.baseURL — this was conflicting with api.js
+// api.js (utils/api.js) handles all baseURL logic correctly
+// Using both caused double /api/api/ on deployed version
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

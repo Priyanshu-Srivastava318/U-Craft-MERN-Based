@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 
 export default function Wishlist() {
@@ -9,7 +9,7 @@ export default function Wishlist() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('/api/users/wishlist')
+    api.get('/users/wishlist')
       .then(({ data }) => setItems(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));

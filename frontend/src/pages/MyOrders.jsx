@@ -1,25 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const STATUS_COLORS = {
-  placed: 'bg-blue-100 text-blue-700',
-  confirmed: 'bg-indigo-100 text-indigo-700',
+  placed:     'bg-blue-100 text-blue-700',
+  confirmed:  'bg-indigo-100 text-indigo-700',
   processing: 'bg-amber-100 text-amber-700',
-  shipped: 'bg-purple-100 text-purple-700',
-  delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
+  shipped:    'bg-purple-100 text-purple-700',
+  delivered:  'bg-green-100 text-green-700',
+  cancelled:  'bg-red-100 text-red-700',
 };
-
 const STATUS_STEPS = ['placed', 'confirmed', 'processing', 'shipped', 'delivered'];
 
 export default function MyOrders() {
-  const [orders, setOrders] = useState([]);
+  const [orders,  setOrders]  = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('/api/orders/my-orders')
+    api.get('/orders/my-orders')
       .then(({ data }) => setOrders(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -49,7 +48,7 @@ export default function MyOrders() {
                 <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 bg-stone-50 border-b border-stone-200">
                   <div>
                     <p className="font-body font-semibold text-ink-900">#{order.orderNumber}</p>
-                    <p className="font-body text-xs text-stone-500">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    <p className="font-body text-xs text-stone-500">{new Date(order.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-display text-lg">₹{order.total?.toLocaleString()}</span>

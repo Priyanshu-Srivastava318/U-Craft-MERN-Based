@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const { user, updateUser } = useAuth(); // fetchMe nahi hai — updateUser use karo
+  const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -23,8 +23,7 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { data } = await axios.put('/api/auth/profile', form);
-      // updateUser se context aur localStorage dono update ho jayenge
+      const { data } = await api.put('/auth/profile', form);
       updateUser(data.user || { ...user, ...form });
       toast.success('Profile updated!');
     } catch {
