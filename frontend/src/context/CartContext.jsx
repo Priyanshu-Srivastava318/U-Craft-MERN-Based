@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState({ items: [] });
+  const [cart,     setCart]     = useState({ items: [] });
   const [cartOpen, setCartOpen] = useState(false);
   const { user, socket } = useAuth();
 
@@ -18,12 +18,11 @@ export const CartProvider = ({ children }) => {
     }
   }, [user]);
 
+  // ✅ Socket with proper cleanup
   useEffect(() => {
-    if (socket) {
-      socket.on('cart-updated', (updatedCart) => {
-        setCart(updatedCart);
-      });
-    }
+    if (!socket) return;
+    socket.on('cart-updated', (updatedCart) => setCart(updatedCart));
+    return () => socket.off('cart-updated');
   }, [socket]);
 
   const fetchCart = async () => {
@@ -81,13 +80,23 @@ export const CartProvider = ({ children }) => {
     return sum + price * item.quantity;
   }, 0) || 0;
 
+  // ✅ isInCart — ProductDetail "Go to Cart" button ke liye
+  const isInCart = (productId) =>
+    cart.items?.some(item =>
+      item.product?._id?.toString() === productId?.toString() ||
+      item.product?.toString() === productId?.toString()
+    );
+
   return (
-    <CartContext.Provider value={{ cart, cartCount, cartTotal, cartOpen, setCartOpen, addToCart, updateQuantity, removeFromCart, clearCart, fetchCart }}>
+    <CartContext.Provider value={{
+      cart, cartCount, cartTotal, cartOpen, setCartOpen,
+      addToCart, updateQuantity, removeFromCart, clearCart, fetchCart,
+      isInCart,
+    }}>
       {children}
     </CartContext.Provider>
   );
 };
 
 export const useCart = () => useContext(CartContext);
-
 export default CartContext;
