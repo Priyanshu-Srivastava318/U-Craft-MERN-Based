@@ -3,34 +3,56 @@ const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
-// Toggle wishlist
-router.post('/wishlist/:productId', protect, async (req, res) => {
+// ── Get Wishlist ─────────────────────────────────────────────
+router.get('/wishlist', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    const productId = req.params.productId;
-    const idx = user.wishlist.indexOf(productId);
-    if (idx > -1) {
-      user.wishlist.splice(idx, 1);
-    } else {
-      user.wishlist.push(productId);
-    }
-    await user.save();
-    res.json({ wishlist: user.wishlist });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const user = await User.findById(req.user._id).populate('wishlist');
+    res.json(user.wishlist || []);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get wishlist
-router.get('/wishlist', protect, async (req, res) => {
+// ── Add to Wishlist ──────────────────────────────────────────
+router.post('/wishlist/:productId', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate({
-      path: 'wishlist',
-      populate: { path: 'artist', select: 'brandName' }
-    });
-    res.json(user.wishlist);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const user = await User.findById(req.user._id);
+    if (!user.wishlist) user.wishlist = [];
+
+    if (!user.wishlist.includes(req.params.productId)) {
+      user.wishlist.push(req.params.productId);
+      await user.save();
+    }
+
+    const updated = await User.findById(req.user._id).populate('wishlist');
+
+    // Socket update
+    const io = req.app.get('io');
+    if (io) io.to(`user-${req.user._id}`).emit('wishlist-updated', updated.wishlist);
+
+    res.json(updated.wishlist);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── Remove from Wishlist ─────────────────────────────────────
+router.delete('/wishlist/:productId', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.wishlist = (user.wishlist || []).filter(
+      id => id.toString() !== req.params.productId
+    );
+    await user.save();
+
+    const updated = await User.findById(req.user._id).populate('wishlist');
+
+    const io = req.app.get('io');
+    if (io) io.to(`user-${req.user._id}`).emit('wishlist-updated', updated.wishlist);
+
+    res.json(updated.wishlist);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
