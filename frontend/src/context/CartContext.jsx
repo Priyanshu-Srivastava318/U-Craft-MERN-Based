@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -28,7 +28,7 @@ export const CartProvider = ({ children }) => {
 
   const fetchCart = async () => {
     try {
-      const { data } = await axios.get('/api/cart');
+      const { data } = await api.get('/cart');
       setCart(data);
     } catch (err) {
       console.error('Failed to fetch cart');
@@ -37,7 +37,7 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (productId, quantity = 1) => {
     try {
-      const { data } = await axios.post('/api/cart/add', { productId, quantity });
+      const { data } = await api.post('/cart/add', { productId, quantity });
       setCart(data);
       toast.success('Added to cart!');
       return true;
@@ -49,7 +49,7 @@ export const CartProvider = ({ children }) => {
 
   const updateQuantity = async (productId, quantity) => {
     try {
-      const { data } = await axios.put('/api/cart/update', { productId, quantity });
+      const { data } = await api.put('/cart/update', { productId, quantity });
       setCart(data);
     } catch (err) {
       toast.error('Failed to update cart');
@@ -58,7 +58,7 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (productId) => {
     try {
-      const { data } = await axios.delete(`/api/cart/remove/${productId}`);
+      const { data } = await api.delete(`/cart/remove/${productId}`);
       setCart(data);
       toast.success('Removed from cart');
     } catch (err) {
@@ -68,7 +68,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async () => {
     try {
-      await axios.delete('/api/cart/clear');
+      await api.delete('/cart/clear');
       setCart({ items: [] });
     } catch (err) {
       console.error('Failed to clear cart');
@@ -89,3 +89,5 @@ export const CartProvider = ({ children }) => {
 };
 
 export const useCart = () => useContext(CartContext);
+
+export default CartContext;
