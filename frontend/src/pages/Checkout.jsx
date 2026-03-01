@@ -7,6 +7,17 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export default function Checkout() {
+  // Auth guard inside component — because route is unprotected
+  if (!user) {
+    return (
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#FDFAF5' }}>
+        <div style={{ textAlign:'center' }}>
+          <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.8rem', color:'#1A1208' }}>Please login to checkout</p>
+          <a href="/login" style={{ display:'inline-block', marginTop:16, background:'#C4622D', color:'white', padding:'12px 28px', textDecoration:'none', fontFamily:"'DM Sans',sans-serif", fontSize:'0.8rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>Login</a>
+        </div>
+      </div>
+    );
+  }
   const { cart, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
