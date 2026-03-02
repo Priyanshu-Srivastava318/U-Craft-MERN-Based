@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
+const Artist = require('../models/Artist'); // ✅ ADD - Artist lookup ke liye
 const { protect, artistOnly } = require('../middleware/auth');
 const crypto = require('crypto');
 
@@ -13,16 +14,16 @@ try { Razorpay = require('razorpay'); } catch {
 const getRazorpayInstance = () => {
   if (!Razorpay) throw new Error('Razorpay not installed');
   return new Razorpay({
-    key_id:    process.env.RAZORPAY_KEY_ID,
+    key_id:     process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
   });
 };
 
 // ─────────────────────────────────────────────────────────────
-// SPECIFIC NAMED ROUTES FIRST — before any /:id routes!
+// NAMED ROUTES FIRST — before /:id routes
 // ─────────────────────────────────────────────────────────────
 
-// GET /api/orders/my-orders
+// GET /api/orders/my-orders — buyer ke orders
 router.get('/my-orders', protect, async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
@@ -32,12 +33,19 @@ router.get('/my-orders', protect, async (req, res) => {
   }
 });
 
-// GET /api/orders/artist-orders
+// GET /api/orders/artist-orders — artist ke orders
+// ✅ FIX: req.user._id = User ID, items.artist = Artist ID — dono alag hain!
 router.get('/artist-orders', protect, artistOnly, async (req, res) => {
   try {
-    const orders = await Order.find({ 'items.artist': req.user._id })
+    // Step 1: User ID se Artist record dhundo
+    const artist = await Artist.findOne({ user: req.user._id });
+    if (!artist) return res.status(404).json({ message: 'Artist profile not found' });
+
+    // Step 2: Artist._id se orders dhundo (yahi items.artist mein store hota hai)
+    const orders = await Order.find({ 'items.artist': artist._id })
       .sort({ createdAt: -1 })
       .populate('user', 'name email');
+
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -50,9 +58,9 @@ router.post('/razorpay/create', protect, async (req, res) => {
     const { amount } = req.body;
     const instance = getRazorpayInstance();
     const order = await instance.orders.create({
-      amount: Math.round(amount * 100),
+      amount:   Math.round(amount * 100),
       currency: 'INR',
-      receipt: `rcpt_${Date.now()}`,
+      receipt:  `rcpt_${Date.now()}`,
     });
     res.json(order);
   } catch (err) {
@@ -75,8 +83,8 @@ router.post('/razorpay/verify', protect, async (req, res) => {
 
     const order = await Order.findByIdAndUpdate(orderId, {
       paymentStatus: 'paid',
-      paymentId: razorpay_payment_id,
-      orderStatus: 'confirmed',
+      paymentId:     razorpay_payment_id,
+      orderStatus:   'confirmed',
     }, { new: true });
 
     const io = req.app.get('io');
@@ -96,7 +104,7 @@ router.post('/razorpay/verify', protect, async (req, res) => {
 // GENERIC ROUTES — after named routes
 // ─────────────────────────────────────────────────────────────
 
-// POST /api/orders  — place order
+// POST /api/orders — order place karo
 router.post('/', protect, async (req, res) => {
   try {
     const { shippingAddress, paymentMethod, notes } = req.body;
@@ -113,7 +121,7 @@ router.post('/', protect, async (req, res) => {
       image:    item.product.images?.[0] || '',
       price:    item.product.price,
       quantity: item.quantity,
-      artist:   item.product.artist?._id,
+      artist:   item.product.artist?._id, // ✅ Artist._id store hota hai
     }));
 
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -138,23 +146,40 @@ router.post('/', protect, async (req, res) => {
       if (io) io.to(`user-${req.user._id}`).emit('order-confirmed', order);
     }
 
+    // ✅ Cart clear karo order place hone ke baad
+    await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
+
     res.status(201).json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// PUT /api/orders/:id/status  — artist updates status
+// PUT /api/orders/:id/status — artist order status update kare
 router.put('/:id/status', protect, artistOnly, async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status }, { new: true });
+
+    const validStatuses = ['placed', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status))
+      return res.status(400).json({ message: 'Invalid status' });
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { orderStatus: status, updatedAt: Date.now() },
+      { new: true }
+    );
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
+    // ✅ Buyer ko realtime update
     const io = req.app.get('io');
-    if (io) io.to(`user-${order.user}`).emit('order-status-updated', {
-      orderId: order._id, status, orderNumber: order.orderNumber,
-    });
+    if (io) {
+      io.to(`user-${order.user}`).emit('order-status-updated', {
+        orderId:     order._id,
+        status,
+        orderNumber: order.orderNumber,
+      });
+    }
 
     res.json(order);
   } catch (err) {
@@ -162,7 +187,18 @@ router.put('/:id/status', protect, artistOnly, async (req, res) => {
   }
 });
 
-// DELETE /api/orders/:id  — cancel pending order
+// GET /api/orders/:id — single order
+router.get('/:id', protect, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('user', 'name email');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE /api/orders/:id — unpaid order cancel
 router.delete('/:id', protect, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
