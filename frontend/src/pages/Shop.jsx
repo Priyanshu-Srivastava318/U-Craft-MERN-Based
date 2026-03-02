@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════
-// Shop.jsx — fixed
+// Shop.jsx — with wishlist state
 // ═══════════════════════════════════════════
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, Search, X } from 'lucide-react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = ['All', 'Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'];
 const SORTS = [
@@ -23,6 +24,9 @@ export default function Shop() {
   const [pages,    setPages]    = useState(1);
   const [loading,  setLoading]  = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // ✅ Wishlist IDs — logged-in buyers ke liye fetch karenge
+  const [wishlistedIds, setWishlistedIds] = useState([]);
+  const { user } = useAuth();
 
   const category = params.get('category') || 'All';
   const sort     = params.get('sort')     || 'createdAt';
@@ -30,6 +34,18 @@ export default function Shop() {
   const page     = Number(params.get('page') || 1);
   const minPrice = params.get('minPrice') || '';
   const maxPrice = params.get('maxPrice') || '';
+
+  // ✅ User ka wishlist fetch karo — sirf buyers ke liye
+  useEffect(() => {
+    if (!user || user.role !== 'user') return;
+    api.get('/users/wishlist')
+      .then(({ data }) => {
+        // data is array of populated products — just extract IDs
+        const ids = Array.isArray(data) ? data.map(p => p._id) : [];
+        setWishlistedIds(ids);
+      })
+      .catch(() => {}); // silently fail — not critical
+  }, [user]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -136,7 +152,13 @@ export default function Shop() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map(product => <ProductCard key={product._id} product={product} />)}
+          {products.map(product => (
+            <ProductCard
+              key={product._id}
+              product={product}
+              wishlistedIds={wishlistedIds} // ✅ Pass karo — heart filled dikhega
+            />
+          ))}
         </div>
       )}
 

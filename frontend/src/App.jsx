@@ -21,7 +21,6 @@ import Wishlist        from './pages/Wishlist';
 import Profile         from './pages/Profile';
 import About           from './pages/About';
 
-// ── Spinner ─────────────────────────────────────────────────
 function Spinner() {
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#FDFAF5' }}>
@@ -31,11 +30,13 @@ function Spinner() {
   );
 }
 
-// ── Protected Route — waits for auth to load ────────────────
+// ✅ Defined INSIDE App.jsx — no separate file needed
+// role="artist" → only artists
+// role="user"   → only users  
+// no role       → any logged-in user
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
   const location = useLocation();
-
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role === 'artist' && user.role !== 'artist') return <Navigate to="/" replace />;
@@ -43,7 +44,6 @@ function ProtectedRoute({ children, role }) {
   return children;
 }
 
-// ── Page Transition ──────────────────────────────────────────
 function PageTransition({ children }) {
   const location = useLocation();
   const ref = useRef(null);
@@ -62,7 +62,6 @@ function PageTransition({ children }) {
   return <div ref={ref} style={{ minHeight:'100vh' }}>{children}</div>;
 }
 
-// ── Progress Bar ─────────────────────────────────────────────
 function RouteProgressBar() {
   const location = useLocation();
   const barRef = useRef(null);
@@ -82,14 +81,12 @@ function RouteProgressBar() {
   );
 }
 
-// ── Scroll Reset ─────────────────────────────────────────────
 function ScrollReset() {
   const location = useLocation();
   useEffect(() => { window.scrollTo({ top:0, behavior:'instant' }); }, [location.pathname]);
   return null;
 }
 
-// ── Layout ───────────────────────────────────────────────────
 function Layout({ children, hideFooter = false }) {
   return (
     <>
@@ -101,7 +98,6 @@ function Layout({ children, hideFooter = false }) {
   );
 }
 
-// ── App ──────────────────────────────────────────────────────
 export default function App() {
   return (
     <BrowserRouter>
@@ -140,31 +136,31 @@ export default function App() {
 
           <PageTransition>
             <Routes>
-              {/* Public — no auth needed */}
-              <Route path="/login"    element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/"         element={<Layout><Home /></Layout>} />
-              <Route path="/shop"     element={<Layout><Shop /></Layout>} />
+              {/* Public */}
+              <Route path="/login"       element={<Login />} />
+              <Route path="/register"    element={<Register />} />
+              <Route path="/"            element={<Layout><Home /></Layout>} />
+              <Route path="/shop"        element={<Layout><Shop /></Layout>} />
               <Route path="/product/:id" element={<Layout><ProductDetail /></Layout>} />
-              <Route path="/artists"  element={<Layout><Artists /></Layout>} />
-              <Route path="/artist/:id" element={<Layout><ArtistProfile /></Layout>} />
-              <Route path="/about"    element={<Layout><About /></Layout>} />
+              <Route path="/artists"     element={<Layout><Artists /></Layout>} />
+              <Route path="/artist/:id"  element={<Layout><ArtistProfile /></Layout>} />
+              <Route path="/about"       element={<Layout><About /></Layout>} />
 
-              {/* ✅ Checkout — NO ProtectedRoute wrapper, auth handled inside Checkout.jsx */}
+              {/* Checkout — auth handled inside component */}
               <Route path="/checkout" element={<Layout hideFooter><Checkout /></Layout>} />
 
-              {/* User protected */}
+              {/* ✅ Any logged-in user — NO role restriction */}
               <Route path="/orders" element={
-                <ProtectedRoute role="user"><Layout><MyOrders /></Layout></ProtectedRoute>
+                <ProtectedRoute><Layout><MyOrders /></Layout></ProtectedRoute>
               }/>
               <Route path="/wishlist" element={
-                <ProtectedRoute role="user"><Layout><Wishlist /></Layout></ProtectedRoute>
+                <ProtectedRoute><Layout><Wishlist /></Layout></ProtectedRoute>
               }/>
               <Route path="/profile" element={
                 <ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>
               }/>
 
-              {/* Artist protected */}
+              {/* Artist only */}
               <Route path="/artist/dashboard" element={
                 <ProtectedRoute role="artist"><Layout><ArtistDashboard /></Layout></ProtectedRoute>
               }/>

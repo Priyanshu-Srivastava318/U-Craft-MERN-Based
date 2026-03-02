@@ -4,14 +4,16 @@ import { Heart, ShoppingBag, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../utils/api'; // ✅ api.js use karo, axios nahi — token auto-attach hoga
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, wishlistedIds = [] }) {
   const { addToCart } = useCart();
   const { user } = useAuth();
   const [imageIdx, setImageIdx] = useState(0);
-  const [wishlisted, setWishlisted] = useState(false);
+  // ✅ Parent se wishlistedIds prop milega — initial state sahi hogi
+  const [wishlisted, setWishlisted] = useState(() => wishlistedIds.includes(product._id));
   const [adding, setAdding] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -25,11 +27,27 @@ export default function ProductCard({ product }) {
   const handleWishlist = async (e) => {
     e.preventDefault();
     if (!user) { toast.error('Please login'); return; }
+    if (wishlistLoading) return;
+
+    setWishlistLoading(true);
     try {
-      await axios.post(`/api/users/wishlist/${product._id}`);
-      setWishlisted(!wishlisted);
-      toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
-    } catch { toast.error('Failed'); }
+      if (wishlisted) {
+        // ✅ DELETE — remove from wishlist
+        await api.delete(`/users/wishlist/${product._id}`);
+        setWishlisted(false);
+        toast.success('Removed from wishlist');
+      } else {
+        // ✅ POST — add to wishlist (token auto-attached via api.js interceptor)
+        await api.post(`/users/wishlist/${product._id}`);
+        setWishlisted(true);
+        toast.success('Added to wishlist ♡');
+      }
+    } catch (err) {
+      console.error('Wishlist error:', err);
+      toast.error('Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   const discount = product.comparePrice > product.price
@@ -66,11 +84,15 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          {/* Actions */}
+          {/* Wishlist button */}
           <div className="absolute top-3 right-3 flex flex-col gap-2 translate-x-10 group-hover:translate-x-0 transition-transform duration-300">
             <button
               onClick={handleWishlist}
-              className={`w-9 h-9 flex items-center justify-center bg-white shadow-md transition-colors ${wishlisted ? 'text-red-500' : 'text-stone-600 hover:text-red-500'}`}
+              disabled={wishlistLoading}
+              className={`w-9 h-9 flex items-center justify-center bg-white shadow-md transition-colors ${
+                wishlisted ? 'text-red-500' : 'text-stone-600 hover:text-red-500'
+              } ${wishlistLoading ? 'opacity-60' : ''}`}
+              title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             >
               <Heart size={16} fill={wishlisted ? 'currentColor' : 'none'} />
             </button>

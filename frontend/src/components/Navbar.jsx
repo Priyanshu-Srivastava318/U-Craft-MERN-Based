@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, LogOut, LayoutDashboard, Heart } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, LogOut, LayoutDashboard, Heart, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -9,167 +9,209 @@ export default function Navbar() {
   const { cartCount, setCartOpen } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (path) => location.pathname === path;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  // ✅ Track window width — no CSS class dependency
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
     setProfileOpen(false);
-  };
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = () => { logout(); navigate('/'); };
 
   const navLinks = [
-    { label: 'Home', path: '/' },
-    { label: 'Shop', path: '/shop' },
+    { label: 'Home',    path: '/' },
+    { label: 'Shop',    path: '/shop' },
     { label: 'Artists', path: '/artists' },
-    { label: 'About', path: '/about' },
+    { label: 'About',   path: '/about' },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#fdf8f3] border-b border-stone-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-2xl font-bold text-ink-900 tracking-tight">
-              U<span className="text-craft-500">·</span>Craft
-            </span>
-          </Link>
+    <nav style={{ position:'sticky', top:0, zIndex:50, background:'var(--cream)', borderBottom:'1px solid var(--parch-dk)' }}>
+      <div style={{ maxWidth:1280, margin:'0 auto', padding:'0 24px', display:'flex', alignItems:'center', justifyContent:'space-between', height:68 }}>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-8">
+        {/* Logo */}
+        <Link to="/" style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.6rem', fontWeight:700, color:'var(--ink)', textDecoration:'none', letterSpacing:'-0.01em', flexShrink:0 }}>
+          U<span style={{ color:'var(--clay)' }}>·</span>Craft
+        </Link>
+
+        {/* Desktop nav links */}
+        {!isMobile && (
+          <div style={{ display:'flex', alignItems:'center', gap:32 }}>
             {navLinks.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`font-body text-sm tracking-wide transition-colors ${
-                  isActive(link.path)
-                    ? 'text-craft-500 font-medium'
-                    : 'text-stone-600 hover:text-ink-900'
-                }`}
-              >
+              <Link key={link.path} to={link.path} style={{
+                fontFamily:"'DM Sans',sans-serif", fontSize:'0.88rem',
+                color: isActive(link.path) ? 'var(--clay)' : 'var(--stone)',
+                fontWeight: isActive(link.path) ? 600 : 400,
+                textDecoration:'none', transition:'color 0.2s', whiteSpace:'nowrap',
+              }}>
                 {link.label}
               </Link>
             ))}
           </div>
+        )}
 
-          {/* Right side */}
-          <div className="flex items-center gap-3">
-            {user && user.role === 'user' && (
-              <>
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className="relative p-2 text-stone-600 hover:text-craft-500 transition-colors"
-                >
-                  <ShoppingBag size={20} />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-craft-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-body font-bold">
-                      {cartCount}
-                    </span>
-                  )}
-                </button>
-              </>
-            )}
+        {/* Right side */}
+        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
 
-            {user ? (
-              <div className="relative">
+          {/* ✅ Cart icon — buyers only, always rendered when role=user */}
+          {user?.role === 'user' && (
+            <button
+              onClick={() => setCartOpen(true)}
+              style={{ position:'relative', padding:'8px 10px', background:'none', border:'none', cursor:'pointer', color:'var(--stone)', display:'flex', alignItems:'center', justifyContent:'center' }}
+              title="View cart"
+            >
+              <ShoppingBag size={22} color="var(--stone)" />
+              {cartCount > 0 && (
+                <span style={{
+                  position:'absolute', top:3, right:3,
+                  background:'var(--clay)', color:'white',
+                  fontSize:'0.58rem', fontWeight:700,
+                  minWidth:16, height:16, borderRadius:8,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontFamily:"'DM Sans',sans-serif", padding:'0 3px', lineHeight:1,
+                }}>
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Desktop: user menu / auth buttons */}
+          {!isMobile && (
+            user ? (
+              <div style={{ position:'relative' }} ref={dropdownRef}>
                 <button
-                  onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-craft-50 transition-colors"
+                  onClick={() => setProfileOpen(p => !p)}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', background:'none', border:'1.5px solid var(--parch-dk)', cursor:'pointer', transition:'border-color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--clay)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--parch-dk)'}
                 >
                   {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-full object-cover" />
+                    <img src={user.avatar} alt={user.name} style={{ width:26, height:26, borderRadius:'50%', objectFit:'cover' }} />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-craft-500 flex items-center justify-center text-white text-xs font-bold">
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'var(--clay)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:'0.75rem', fontWeight:700, flexShrink:0 }}>
                       {user.name?.[0]?.toUpperCase()}
                     </div>
                   )}
-                  <span className="hidden sm:block font-body text-sm text-stone-700">{user.name?.split(' ')[0]}</span>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.84rem', color:'var(--ink)', fontWeight:500, whiteSpace:'nowrap' }}>
+                    {user.name?.split(' ')[0]}
+                  </span>
                 </button>
 
+                {/* Dropdown */}
                 {profileOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-stone-200 shadow-lg z-50">
+                  <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:210, background:'white', border:'1.5px solid var(--parch-dk)', boxShadow:'4px 4px 0 rgba(26,18,8,0.07)', zIndex:100 }}>
                     {user.role === 'artist' ? (
-                      <Link
-                        to="/artist/dashboard"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2 px-4 py-3 text-sm font-body text-stone-700 hover:bg-craft-50 transition-colors"
-                      >
-                        <LayoutDashboard size={16} /> Dashboard
+                      <Link to="/artist/dashboard" style={dropStyle}>
+                        <LayoutDashboard size={15}/> Dashboard
                       </Link>
                     ) : (
                       <>
-                        <Link
-                          to="/orders"
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2 px-4 py-3 text-sm font-body text-stone-700 hover:bg-craft-50 transition-colors"
-                        >
-                          <ShoppingBag size={16} /> My Orders
+                        <Link to="/orders" style={dropStyle}>
+                          <Package size={15}/> My Orders
                         </Link>
-                        <Link
-                          to="/wishlist"
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2 px-4 py-3 text-sm font-body text-stone-700 hover:bg-craft-50 transition-colors"
-                        >
-                          <Heart size={16} /> Wishlist
+                        <Link to="/wishlist" style={dropStyle}>
+                          <Heart size={15}/> Wishlist
                         </Link>
                       </>
                     )}
-                    <Link
-                      to="/profile"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-sm font-body text-stone-700 hover:bg-craft-50 transition-colors border-t border-stone-100"
-                    >
-                      <User size={16} /> Profile
+                    <Link to="/profile" style={{ ...dropStyle, borderTop:'1px solid var(--parch-dk)' }}>
+                      <User size={15}/> Profile
                     </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 px-4 py-3 text-sm font-body text-red-600 hover:bg-red-50 transition-colors w-full border-t border-stone-100"
-                    >
-                      <LogOut size={16} /> Sign Out
+                    <button onClick={handleLogout} style={{ ...dropStyle, borderTop:'1px solid var(--parch-dk)', color:'#B91C1C', width:'100%', background:'none', cursor:'pointer', textAlign:'left' }}>
+                      <LogOut size={15}/> Sign Out
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/login" className="btn-outline !py-2 !px-4 hidden sm:block">Login</Link>
-                <Link to="/register" className="btn-primary !py-2 !px-4">Sign Up</Link>
+              <div style={{ display:'flex', gap:8 }}>
+                <Link to="/login"    className="btn-outline" style={{ padding:'8px 18px' }}>Login</Link>
+                <Link to="/register" className="btn-primary" style={{ padding:'8px 18px' }}>Sign Up</Link>
               </div>
-            )}
+            )
+          )}
 
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 text-stone-600"
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          {/* Mobile: hamburger */}
+          {isMobile && (
+            <button onClick={() => setMobileOpen(p => !p)} style={{ padding:6, background:'none', border:'none', cursor:'pointer', color:'var(--ink)', display:'flex', alignItems:'center' }}>
+              {mobileOpen ? <X size={22}/> : <Menu size={22}/>}
             </button>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-stone-200 px-4 py-4 space-y-3">
+      {isMobile && mobileOpen && (
+        <div style={{ background:'white', borderTop:'1px solid var(--parch-dk)', padding:'12px 24px 20px' }}>
           {navLinks.map(link => (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={() => setMobileOpen(false)}
-              className="block font-body text-stone-700 hover:text-craft-500 py-2 border-b border-stone-100"
-            >
+            <Link key={link.path} to={link.path} style={{ display:'block', padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color: isActive(link.path) ? 'var(--clay)' : 'var(--ink)', fontWeight: isActive(link.path) ? 600 : 400, textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
               {link.label}
             </Link>
           ))}
-          {!user && (
-            <Link to="/login" onClick={() => setMobileOpen(false)} className="block btn-primary text-center mt-3">
-              Login / Sign Up
-            </Link>
+          {user ? (
+            <>
+              {user.role === 'user' && (
+                <Link to="/orders" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                  <Package size={15}/> My Orders
+                </Link>
+              )}
+              {user.role === 'user' && (
+                <Link to="/wishlist" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                  <Heart size={15}/> Wishlist
+                </Link>
+              )}
+              {user.role === 'artist' && (
+                <Link to="/artist/dashboard" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                  <LayoutDashboard size={15}/> Dashboard
+                </Link>
+              )}
+              <Link to="/profile" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                <User size={15}/> Profile
+              </Link>
+              <button onClick={handleLogout} style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'#B91C1C', background:'none', border:'none', cursor:'pointer' }}>
+                <LogOut size={15}/> Sign Out
+              </button>
+            </>
+          ) : (
+            <div style={{ display:'flex', gap:8, marginTop:16 }}>
+              <Link to="/login"    className="btn-outline" style={{ flex:1, justifyContent:'center' }}>Login</Link>
+              <Link to="/register" className="btn-primary" style={{ flex:1, justifyContent:'center' }}>Sign Up</Link>
+            </div>
           )}
         </div>
       )}
     </nav>
   );
 }
+
+const dropStyle = {
+  display:'flex', alignItems:'center', gap:10,
+  padding:'11px 16px',
+  fontFamily:"'DM Sans',sans-serif", fontSize:'0.84rem',
+  color:'var(--ink)', textDecoration:'none',
+  transition:'background 0.15s', cursor:'pointer',
+  background:'none', border:'none', width:'100%', textAlign:'left',
+};

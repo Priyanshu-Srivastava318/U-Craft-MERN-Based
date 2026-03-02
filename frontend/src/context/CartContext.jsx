@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
@@ -6,33 +6,35 @@ import toast from 'react-hot-toast';
 const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-  const [cart,     setCart]     = useState({ items: [] });
+  const [cart, setCart]       = useState({ items: [] });
   const [cartOpen, setCartOpen] = useState(false);
-  const { user, socket } = useAuth();
+  const { user, socket }      = useAuth();
+
+  // Fetch cart when user logs in
+  const fetchCart = useCallback(async () => {
+    try {
+      const { data } = await api.get('/cart');
+      setCart(data || { items: [] });
+    } catch {
+      setCart({ items: [] });
+    }
+  }, []);
 
   useEffect(() => {
-    if (user && user.role === 'user') {
+    if (user?.role === 'user') {
       fetchCart();
     } else {
       setCart({ items: [] });
     }
-  }, [user]);
+  }, [user?._id]);
 
-  // ✅ Socket with proper cleanup
+  // Realtime cart updates via socket
   useEffect(() => {
     if (!socket) return;
-    socket.on('cart-updated', (updatedCart) => setCart(updatedCart));
-    return () => socket.off('cart-updated');
+    const handler = (updatedCart) => setCart(updatedCart || { items: [] });
+    socket.on('cart-updated', handler);
+    return () => socket.off('cart-updated', handler);
   }, [socket]);
-
-  const fetchCart = async () => {
-    try {
-      const { data } = await api.get('/cart');
-      setCart(data);
-    } catch (err) {
-      console.error('Failed to fetch cart');
-    }
-  };
 
   const addToCart = async (productId, quantity = 1) => {
     try {
@@ -50,7 +52,7 @@ export const CartProvider = ({ children }) => {
     try {
       const { data } = await api.put('/cart/update', { productId, quantity });
       setCart(data);
-    } catch (err) {
+    } catch {
       toast.error('Failed to update cart');
     }
   };
@@ -60,7 +62,7 @@ export const CartProvider = ({ children }) => {
       const { data } = await api.delete(`/cart/remove/${productId}`);
       setCart(data);
       toast.success('Removed from cart');
-    } catch (err) {
+    } catch {
       toast.error('Failed to remove item');
     }
   };
@@ -69,34 +71,38 @@ export const CartProvider = ({ children }) => {
     try {
       await api.delete('/cart/clear');
       setCart({ items: [] });
-    } catch (err) {
+    } catch {
       console.error('Failed to clear cart');
     }
   };
 
-  const cartCount = cart.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  // ✅ isInCart — was missing!
+  const isInCart = (productId) => {
+    return cart.items?.some(item =>
+      (item.product?._id || item.product)?.toString() === productId?.toString()
+    ) || false;
+  };
+
+  const cartCount = cart.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
   const cartTotal = cart.items?.reduce((sum, item) => {
     const price = item.product?.price || 0;
-    return sum + price * item.quantity;
+    return sum + price * (item.quantity || 0);
   }, 0) || 0;
-
-  // ✅ isInCart — ProductDetail "Go to Cart" button ke liye
-  const isInCart = (productId) =>
-    cart.items?.some(item =>
-      item.product?._id?.toString() === productId?.toString() ||
-      item.product?.toString() === productId?.toString()
-    );
 
   return (
     <CartContext.Provider value={{
-      cart, cartCount, cartTotal, cartOpen, setCartOpen,
-      addToCart, updateQuantity, removeFromCart, clearCart, fetchCart,
-      isInCart,
+      cart, cartCount, cartTotal,
+      cartOpen, setCartOpen,
+      addToCart, updateQuantity, removeFromCart, clearCart,
+      fetchCart, isInCart,
     }}>
       {children}
     </CartContext.Provider>
   );
 };
 
-export const useCart = () => useContext(CartContext);
-export default CartContext;
+export const useCart = () => {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error('useCart must be used inside CartProvider');
+  return ctx;
+};
