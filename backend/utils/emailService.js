@@ -1,8 +1,12 @@
 const nodemailer = require('nodemailer');
 
 // ── Transporter ──────────────────────────────────────────────
+// ✅ host + port explicitly set — Railway IPv6 fix (no 'service: gmail')
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // SSL
+  family: 4,    // ✅ Force IPv4 — Railway free tier IPv6 support nahi karta
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,

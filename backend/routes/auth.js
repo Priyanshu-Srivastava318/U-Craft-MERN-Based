@@ -25,19 +25,14 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // ✅ Welcome email
-    await sendWelcomeEmail({ email: user.email, name: user.name, role: user.role });
-
     const token = generateToken(user._id);
+
+    // ✅ Fire and forget — response pe block nahi karta
+    sendWelcomeEmail({ email: user.email, name: user.name, role: user.role }).catch(() => {});
+
     res.status(201).json({
       token,
-      user: {
-        _id:    user._id,
-        name:   user.name,
-        email:  user.email,
-        role:   user.role,
-        avatar: user.avatar,
-      },
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -52,17 +47,10 @@ router.post('/login', async (req, res) => {
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-
     const token = generateToken(user._id);
     res.json({
       token,
-      user: {
-        _id:    user._id,
-        name:   user.name,
-        email:  user.email,
-        role:   user.role,
-        avatar: user.avatar,
-      },
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
