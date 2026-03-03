@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Package, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Package, RefreshCw, X } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const STATUS_COLORS = {
   placed:     { bg:'#EFF6FF', text:'#1D4ED8' },
@@ -15,9 +16,11 @@ const STATUS_COLORS = {
 const STATUS_STEPS = ['placed','confirmed','processing','shipped','delivered'];
 
 export default function MyOrders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders,      setOrders]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [cancelling,  setCancelling]  = useState(null); // orderId being cancelled
+  const [confirmId,   setConfirmId]   = useState(null); // confirm modal orderId
   const { socket } = useAuth();
 
   const fetchOrders = useCallback(async () => {
@@ -34,31 +37,38 @@ export default function MyOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  // ✅ Realtime order status updates
+  // Realtime updates
   useEffect(() => {
     if (!socket) return;
-
     socket.on('order-status-updated', ({ orderId, status }) => {
-      setOrders(prev => prev.map(o =>
-        o._id === orderId ? { ...o, orderStatus: status } : o
-      ));
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: status } : o));
       setLastUpdated(new Date());
     });
-
     socket.on('order-confirmed', (newOrder) => {
       setOrders(prev => {
         const exists = prev.find(o => o._id === newOrder._id);
-        if (exists) return prev.map(o => o._id===newOrder._id ? newOrder : o);
+        if (exists) return prev.map(o => o._id === newOrder._id ? newOrder : o);
         return [newOrder, ...prev];
       });
       setLastUpdated(new Date());
     });
-
-    return () => {
-      socket.off('order-status-updated');
-      socket.off('order-confirmed');
-    };
+    return () => { socket.off('order-status-updated'); socket.off('order-confirmed'); };
   }, [socket]);
+
+  // ✅ Cancel order
+  const handleCancel = async (orderId) => {
+    setCancelling(orderId);
+    try {
+      await api.delete(`/orders/${orderId}`);
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+      toast.success('Order cancelled successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(null);
+      setConfirmId(null);
+    }
+  };
 
   if (loading) return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-4">
@@ -69,6 +79,35 @@ export default function MyOrders() {
 
   return (
     <div className="page-enter max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+      {/* ── Confirm cancel modal ── */}
+      {confirmId && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'white', padding:32, maxWidth:400, width:'100%', border:'1px solid #E8DDD4' }}>
+            <h3 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600, marginBottom:12 }}>Cancel Order?</h3>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.88rem', color:'#6B5E52', marginBottom:24, lineHeight:1.7 }}>
+              Are you sure you want to cancel this order? This action cannot be undone.
+            </p>
+            <div style={{ display:'flex', gap:12 }}>
+              <button
+                onClick={() => handleCancel(confirmId)}
+                disabled={cancelling === confirmId}
+                style={{ flex:1, padding:'11px', background:'#B91C1C', color:'white', border:'none', fontFamily:"'DM Sans',sans-serif", fontSize:'0.82rem', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', opacity: cancelling ? 0.6 : 1 }}
+              >
+                {cancelling === confirmId ? 'Cancelling…' : 'Yes, Cancel'}
+              </button>
+              <button
+                onClick={() => setConfirmId(null)}
+                style={{ flex:1, padding:'11px', background:'transparent', color:'#1A1208', border:'1.5px solid #1A1208', fontFamily:"'DM Sans',sans-serif", fontSize:'0.82rem', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer' }}
+              >
+                Keep Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="section-title">My Orders</h1>
@@ -94,7 +133,8 @@ export default function MyOrders() {
         <div className="space-y-5">
           {orders.map(order => {
             const stepIdx = STATUS_STEPS.indexOf(order.orderStatus);
-            const color = STATUS_COLORS[order.orderStatus] || STATUS_COLORS.placed;
+            const color   = STATUS_COLORS[order.orderStatus] || STATUS_COLORS.placed;
+            const canCancel = order.orderStatus === 'placed' && order.paymentStatus !== 'paid';
 
             return (
               <div key={order._id} className="bg-white border border-stone-200 overflow-hidden">
@@ -104,29 +144,38 @@ export default function MyOrders() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Package size={14} className="text-stone-400"/>
-                      <p className="font-body font-semibold text-sm text-ink-900">#{order.orderNumber}</p>
+                      <p className="font-body font-semibold text-sm">#{order.orderNumber}</p>
                     </div>
                     <p className="font-body text-xs text-stone-500 mt-0.5">
                       {new Date(order.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="font-display text-lg">₹{order.total?.toLocaleString()}</span>
-                    <span
-                      className="text-xs px-3 py-1 font-body capitalize font-semibold"
-                      style={{background: color.bg, color: color.text}}
-                    >
+                    <span className="text-xs px-3 py-1 font-body capitalize font-semibold"
+                      style={{ background: color.bg, color: color.text }}>
                       {order.orderStatus}
                     </span>
                     {order.paymentMethod === 'razorpay' && order.paymentStatus === 'paid' && (
-                      <span className="text-xs px-2 py-1 font-body font-medium" style={{background:'#F0FDF4',color:'#166534'}}>
-                        Paid
+                      <span className="text-xs px-2 py-1 font-body font-medium" style={{ background:'#F0FDF4', color:'#166534' }}>
+                        Paid ✓
                       </span>
+                    )}
+                    {/* ✅ Cancel button — sirf 'placed' status pe */}
+                    {canCancel && (
+                      <button
+                        onClick={() => setConfirmId(order._id)}
+                        style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 12px', background:'transparent', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:"'DM Sans',sans-serif", fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', transition:'all 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background='#FEF2F2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}
+                      >
+                        <X size={11}/> Cancel
+                      </button>
                     )}
                   </div>
                 </div>
 
-                {/* Progress bar */}
+                {/* Progress tracker */}
                 {order.orderStatus !== 'cancelled' && (
                   <div className="px-6 py-4 border-b border-stone-100">
                     <div className="flex items-center">
