@@ -2,9 +2,15 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
-const Artist = require('../models/Artist'); // ✅ ADD - Artist lookup ke liye
+const Artist = require('../models/Artist');
+const User = require('../models/User');
 const { protect, artistOnly } = require('../middleware/auth');
 const crypto = require('crypto');
+const {
+  sendOrderPlaced,
+  sendOrderStatusUpdate,
+  sendNewOrderToArtist,
+} = require('../utils/emailService');
 
 let Razorpay;
 try { Razorpay = require('razorpay'); } catch {
@@ -20,10 +26,10 @@ const getRazorpayInstance = () => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// NAMED ROUTES FIRST — before /:id routes
+// NAMED ROUTES FIRST
 // ─────────────────────────────────────────────────────────────
 
-// GET /api/orders/my-orders — buyer ke orders
+// GET /api/orders/my-orders
 router.get('/my-orders', protect, async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
@@ -33,15 +39,12 @@ router.get('/my-orders', protect, async (req, res) => {
   }
 });
 
-// GET /api/orders/artist-orders — artist ke orders
-// ✅ FIX: req.user._id = User ID, items.artist = Artist ID — dono alag hain!
+// GET /api/orders/artist-orders
 router.get('/artist-orders', protect, artistOnly, async (req, res) => {
   try {
-    // Step 1: User ID se Artist record dhundo
     const artist = await Artist.findOne({ user: req.user._id });
     if (!artist) return res.status(404).json({ message: 'Artist profile not found' });
 
-    // Step 2: Artist._id se orders dhundo (yahi items.artist mein store hota hai)
     const orders = await Order.find({ 'items.artist': artist._id })
       .sort({ createdAt: -1 })
       .populate('user', 'name email');
@@ -94,6 +97,17 @@ router.post('/razorpay/verify', protect, async (req, res) => {
       io.to(`user-${order.user}`).emit('order-confirmed', order);
     }
 
+    // ✅ Email — payment confirmed
+    const buyer = await User.findById(order.user);
+    if (buyer) {
+      await sendOrderStatusUpdate({
+        buyerEmail: buyer.email,
+        buyerName:  buyer.name,
+        order,
+        newStatus:  'confirmed',
+      });
+    }
+
     res.json({ success: true, order });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -101,10 +115,10 @@ router.post('/razorpay/verify', protect, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// GENERIC ROUTES — after named routes
+// GENERIC ROUTES
 // ─────────────────────────────────────────────────────────────
 
-// POST /api/orders — order place karo
+// POST /api/orders — place order
 router.post('/', protect, async (req, res) => {
   try {
     const { shippingAddress, paymentMethod, notes } = req.body;
@@ -121,7 +135,7 @@ router.post('/', protect, async (req, res) => {
       image:    item.product.images?.[0] || '',
       price:    item.product.price,
       quantity: item.quantity,
-      artist:   item.product.artist?._id, // ✅ Artist._id store hota hai
+      artist:   item.product.artist?._id,
     }));
 
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -139,6 +153,7 @@ router.post('/', protect, async (req, res) => {
       orderNumber: `UC${Date.now()}`,
     });
 
+    // ✅ Socket
     if (paymentMethod === 'COD') {
       const io = req.app.get('io');
       const artistIds = [...new Set(items.map(i => i.artist?.toString()).filter(Boolean))];
@@ -146,8 +161,32 @@ router.post('/', protect, async (req, res) => {
       if (io) io.to(`user-${req.user._id}`).emit('order-confirmed', order);
     }
 
-    // ✅ Cart clear karo order place hone ke baad
+    // ✅ Cart clear
     await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
+
+    // ✅ Emails — buyer + all artists
+    const buyer = await User.findById(req.user._id);
+
+    // Buyer ko order placed email
+    await sendOrderPlaced({
+      buyerEmail: buyer.email,
+      buyerName:  buyer.name,
+      order,
+    });
+
+    // Har artist ko new order email
+    const uniqueArtistIds = [...new Set(items.map(i => i.artist?.toString()).filter(Boolean))];
+    for (const artistId of uniqueArtistIds) {
+      const artistDoc = await Artist.findById(artistId).populate('user', 'name email');
+      if (artistDoc?.user?.email) {
+        await sendNewOrderToArtist({
+          artistEmail: artistDoc.user.email,
+          artistName:  artistDoc.brandName,
+          order,
+          buyerName:   buyer.name,
+        });
+      }
+    }
 
     res.status(201).json(order);
   } catch (err) {
@@ -155,7 +194,7 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-// PUT /api/orders/:id/status — artist order status update kare
+// PUT /api/orders/:id/status — artist updates status
 router.put('/:id/status', protect, artistOnly, async (req, res) => {
   try {
     const { status } = req.body;
@@ -171,7 +210,7 @@ router.put('/:id/status', protect, artistOnly, async (req, res) => {
     );
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    // ✅ Buyer ko realtime update
+    // ✅ Socket — realtime buyer update
     const io = req.app.get('io');
     if (io) {
       io.to(`user-${order.user}`).emit('order-status-updated', {
@@ -181,13 +220,24 @@ router.put('/:id/status', protect, artistOnly, async (req, res) => {
       });
     }
 
+    // ✅ Email — buyer ko status update
+    const buyer = await User.findById(order.user);
+    if (buyer) {
+      await sendOrderStatusUpdate({
+        buyerEmail: buyer.email,
+        buyerName:  buyer.name,
+        order,
+        newStatus:  status,
+      });
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET /api/orders/:id — single order
+// GET /api/orders/:id
 router.get('/:id', protect, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'name email');
@@ -198,7 +248,7 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// DELETE /api/orders/:id — unpaid order cancel
+// DELETE /api/orders/:id
 router.delete('/:id', protect, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
