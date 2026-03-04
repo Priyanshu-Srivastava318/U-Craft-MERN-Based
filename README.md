@@ -1,188 +1,107 @@
-# U-Craft — Artisanal Marketplace
+# U·Craft — Artisanal Marketplace
 
-A full-stack MERN e-commerce platform connecting artisans with buyers who value authentic, handcrafted goods.
+> A marketplace for handcrafted goods — built to connect independent artists with buyers who give a damn about what they own.
 
----
-
-## Tech Stack
-
-- **Backend:** Node.js + Express + MongoDB (Mongoose) + Socket.io
-- **Frontend:** React 18 + Vite + Tailwind CSS
-- **Auth:** JWT-based authentication
-- **Realtime:** Socket.io for cart sync & order notifications
+🔗 **Live:** [u-craft-mern-based.vercel.app](https://u-craft-mern-based.vercel.app)
 
 ---
 
-## Project Structure
+## Why I built this
+
+Most e-commerce platforms treat handmade products the same as factory goods. I wanted to build something where the artist *is* the brand — their story, their craft, their dashboard.
+
+This started as a side project to learn full-stack development. Ended up being the most complete thing I've shipped.
+
+---
+
+## What it does
+
+Two types of users — **buyers** and **artists** — with completely different experiences.
+
+**Buyers** can browse, search, filter by category/price, wishlist products, checkout with COD or Razorpay, and track their orders through a live progress bar. If an artist updates the order status, the buyer sees it in realtime — no page refresh needed.
+
+**Artists** get a full dashboard — add products with multiple images, track incoming orders, update delivery status, see revenue/ratings/stock alerts at a glance. When a new order comes in, they get a realtime notification on the dashboard.
+
+---
+
+## Tech
 
 ```
-ucraft/
-├── backend/
-│   ├── models/       # User, Artist, Product, Order, Cart, Review
-│   ├── routes/       # auth, products, orders, cart, artists, users, reviews
-│   ├── middleware/   # JWT auth, role guards
-│   └── server.js
-├── frontend/
-│   └── src/
-│       ├── pages/    # Home, Shop, Login, Register, ProductDetail,
-│       │             # Artists, ArtistProfile, ArtistDashboard,
-│       │             # Checkout, MyOrders, Wishlist, Profile, About
-│       ├── components/ # Navbar, CartDrawer, ProductCard, Footer, StarRating
-│       ├── context/  # AuthContext, CartContext
-│       └── utils/    # api.js
-└── README.md
+Frontend   React 18 + Vite + Tailwind CSS
+Backend    Node.js + Express + MongoDB
+Realtime   Socket.io
+Auth       JWT (30-day tokens, role-based)
+Payments   Razorpay
+Images     Cloudinary
+Email      Resend
+Deploy     Vercel (frontend) + Render (backend)
 ```
 
 ---
 
-## Setup Instructions
+## Features worth mentioning
 
-### 1. Clone / Extract project
+- **Realtime everything** — cart updates, order notifications, status changes via Socket.io
+- **Role-based auth** — artists and buyers have completely separate flows and protected routes
+- **Razorpay integration** — with signature verification on the backend (not just frontend)
+- **Search with debounce** — MongoDB text index + 400ms debounce so it doesn't hammer the API on every keystroke
+- **Artist dashboard** — live stats, product management, order pipeline
+- **Email notifications** — order placed, status updates, welcome emails via Resend
 
-### 2. Backend Setup
+---
+
+## Running locally
+
 ```bash
+# Clone
+git clone https://github.com/Priyanshu-Srivastava318/U-Craft-MERN-Based.git
+cd U-Craft-MERN-Based
+
+# Backend
 cd backend
-cp .env.example .env
-# Edit .env and add your MONGO_URI (your existing MongoDB URL)
+cp .env.example .env   # fill in your values
 npm install
-```
+npm run dev
 
-### 3. Frontend Setup
-```bash
+# Frontend (new terminal)
 cd frontend
 npm install
+npm run dev
 ```
 
-### 4. Environment Variables (backend/.env)
-```env
-MONGO_URI=your_existing_mongodb_url
-JWT_SECRET=any_random_secret_string
-PORT=5000
+**Required env vars:**
+```
+MONGO_URI=
+JWT_SECRET=
 CLIENT_URL=http://localhost:5173
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RESEND_API_KEY=
 ```
 
-> **Note:** A new collection `ucraft_db` will be automatically created in your existing MongoDB when you first run the app.
+---
 
-### 5. Run Development Servers
+## Folder structure
 
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm run dev
+```
+├── backend/
+│   ├── models/       User, Artist, Product, Order, Cart, Review
+│   ├── routes/       auth, products, orders, cart, artists, users, reviews
+│   ├── utils/        emailService.js
+│   ├── middleware/   auth.js (JWT + role guards)
+│   └── server.js     Express + Socket.io setup
+│
+└── frontend/src/
+    ├── pages/        Home, Shop, ProductDetail, Checkout, MyOrders,
+    │                 Wishlist, ArtistDashboard, ArtistProfile ...
+    ├── components/   Navbar, CartDrawer, ProductCard, StarRating ...
+    ├── context/      AuthContext, CartContext
+    └── utils/        api.js (Axios instance)
 ```
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-Frontend: http://localhost:5173  
-Backend API: http://localhost:5000
-
 ---
 
-## Pages & Routes
-
-| Page | URL | Access |
-|------|-----|--------|
-| Home | `/` | Public |
-| Shop | `/shop` | Public |
-| Product Detail | `/product/:id` | Public |
-| Artists | `/artists` | Public |
-| Artist Profile | `/artist/:id` | Public |
-| About | `/about` | Public |
-| Login | `/login` | Guest |
-| Register | `/register` | Guest |
-| Checkout | `/checkout` | User only |
-| My Orders | `/orders` | User only |
-| Wishlist | `/wishlist` | User only |
-| Profile | `/profile` | Logged in |
-| Artist Dashboard | `/artist/dashboard` | Artist only |
-
----
-
-## Features
-
-### For Buyers (User Role)
-- Browse all products with filters (category, price, sort)
-- Search products
-- Product detail with image gallery + reviews
-- Add to cart (realtime cart via Socket.io)
-- Cart drawer with quantity management
-- Checkout with shipping address
-- Order history with live status tracking progress bar
-- Wishlist
-- Artist profiles with ratings
-
-### For Artists (Artist Role)
-- Full dashboard with stats (sales, revenue, rating, stock alerts)
-- Add / Edit / Delete products with multi-image support
-- Product specifications (material, dimensions, color, etc.)
-- View and manage incoming orders
-- Update order status (placed → confirmed → processing → shipped → delivered)
-- Realtime new order notifications via Socket.io
-- Public profile page visible to all users
-
-### General
-- JWT auth with 30-day tokens
-- Separate signup flows for User and Artist
-- Review & rating system (per product + per artist)
-- Free shipping on orders over ₹999
-- Responsive design on all screens
-
----
-
-## API Reference
-
-### Auth
-- `POST /api/auth/register` — Register user or artist
-- `POST /api/auth/login` — Login
-- `GET /api/auth/me` — Get current user
-
-### Products
-- `GET /api/products` — List products (with filters)
-- `GET /api/products/:id` — Single product
-- `POST /api/products` — Create (artist)
-- `PUT /api/products/:id` — Update (artist)
-- `DELETE /api/products/:id` — Delete (artist)
-- `GET /api/products/artist/my-products` — Artist's products
-
-### Cart
-- `GET /api/cart` — Get cart
-- `POST /api/cart/add` — Add item
-- `PUT /api/cart/update` — Update quantity
-- `DELETE /api/cart/remove/:productId` — Remove item
-- `DELETE /api/cart/clear` — Clear cart
-
-### Orders
-- `POST /api/orders` — Place order
-- `GET /api/orders/my-orders` — User orders
-- `GET /api/orders/artist-orders` — Artist's received orders
-- `PUT /api/orders/:id/status` — Update status (artist)
-
-### Artists
-- `GET /api/artists` — All artists
-- `GET /api/artists/:id` — Artist profile + products + reviews
-- `PUT /api/artists/profile/update` — Update profile (artist)
-- `GET /api/artists/dashboard/stats` — Dashboard stats
-
-### Reviews
-- `POST /api/reviews` — Submit review
-- `GET /api/reviews/product/:id` — Product reviews
-- `GET /api/reviews/artist/:id` — Artist reviews
-
----
-
-## Design System
-
-**Colors:**
-- Primary: Warm craft orange (#dc701c)
-- Ink: Deep brown (#1a1208)
-- Sage: Natural green
-- Background: Warm cream (#fdf8f3)
-
-**Fonts:**
-- Display: Playfair Display (headings)
-- Body: DM Sans (UI text)
-- Accent: Cormorant Garamond (quotes/italic)
+*Built by [Priyanshu Srivastava](https://linkedin.com/in/priyanshu-srivastava318)*
