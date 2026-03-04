@@ -104,4 +104,4 @@ RESEND_API_KEY=
 
 ---
 
-*Built by [Priyanshu Srivastava](https://linkedin.com/in/priyanshu-srivastava318)*
+*Built by [Priyanshu Srivastava](https://www.linkedin.com/in/priyanshu-srivastava-dev/)*
