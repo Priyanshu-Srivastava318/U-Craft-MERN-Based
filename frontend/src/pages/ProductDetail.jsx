@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, ChevronLeft, ChevronRight, ArrowRight, Zap } from 'lucide-react';
+import { ShoppingBag, Heart, ChevronLeft, ChevronRight, ArrowRight, Zap, MessageCircle } from 'lucide-react';
 import api from '../utils/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -44,15 +44,10 @@ export default function ProductDetail() {
   const { user } = useAuth();
   const inCart = isInCart(id);
 
-  // Fetch product
   useEffect(() => { fetchProduct(); }, [id]);
 
-  // ✅ Check wishlist status — runs whenever id or user changes
   useEffect(() => {
-    if (!user || user.role !== 'user') {
-      setWishlistChecked(true);
-      return;
-    }
+    if (!user || user.role !== 'user') { setWishlistChecked(true); return; }
     setWishlistChecked(false);
     api.get('/users/wishlist')
       .then(({ data }) => {
@@ -72,11 +67,8 @@ export default function ProductDetail() {
       ]);
       setProduct(pRes.data);
       setReviews(Array.isArray(rRes.data) ? rRes.data : []);
-    } catch {
-      toast.error('Product not found');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Product not found'); }
+    finally { setLoading(false); }
   };
 
   const handleAddToCart = async () => {
@@ -117,19 +109,15 @@ export default function ProductDetail() {
     finally { setWishlistLoading(false); }
   };
 
-  const handleReview = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await api.post('/reviews', { productId:id, artistId:product.artist?._id, rating:reviewForm.rating, comment:reviewForm.comment });
-      toast.success('Review submitted!');
-      setReviewForm({ rating:5, comment:'' });
-      fetchProduct();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to submit'); }
-    finally { setSubmitting(false); }
+  // ✅ Custom order — chat open with pre-filled message
+  const handleCustomOrder = () => {
+    if (!user) { navigate('/login'); return; }
+    if (user.role === 'artist') { toast.error('Artists cannot place orders'); return; }
+    // Navigate to chat with artist, pre-fill message via query param
+    const msg = encodeURIComponent(`Hi! I'm interested in a custom version of "${product.name}". Can we discuss the details?`);
+    navigate(`/chat/${product.artist?._id}?msg=${msg}`);
   };
 
-  // ── Spinner ──
   const Spinner = ({ dark }) => (
     <span style={{ width:13, height:13, borderRadius:'50%', display:'inline-block', border: dark?'2px solid rgba(26,18,8,0.2)':'2px solid rgba(255,255,255,0.3)', borderTopColor:dark?'#1A1208':'white', animation:'spin 0.7s linear infinite' }}/>
   );
@@ -153,10 +141,11 @@ export default function ProductDetail() {
     </div>
   );
 
+  const isCustomizable = product.specifications?.customizable === true || product.specifications?.customizable === 'true';
+
   return (
     <div className="page-enter" style={{ maxWidth:1280, margin:'0 auto', padding:'40px 24px' }}>
 
-      {/* ── Top grid ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:48, marginBottom:64 }}>
 
         {/* Images */}
@@ -258,14 +247,13 @@ export default function ProductDetail() {
                 {buyingNow ? <><Spinner/> Processing…</> : <><Zap size={15} fill="white"/> Buy Now</>}
               </button>
 
-              {/* ADD TO CART  +  WISHLIST */}
+              {/* ADD TO CART + WISHLIST */}
               <div style={{ display:'flex', gap:10 }}>
                 <button onClick={handleAddToCart} disabled={adding}
                   style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:inCart?'#1A1208':'transparent', color:inCart?'white':'#1A1208', border:'1.5px solid #1A1208', padding:'13px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.78rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', cursor:adding?'not-allowed':'pointer', opacity:adding?0.6:1, transition:'all 0.2s' }}>
                   {adding ? <><Spinner dark/> Adding…</> : inCart ? <><ArrowRight size={15}/> Go to Cart</> : <><ShoppingBag size={15}/> Add to Cart</>}
                 </button>
 
-                {/* ✅ Wishlist — shown to buyers always (even if wishlistChecked is false, button still renders) */}
                 {user?.role === 'user' && (
                   <button onClick={handleWishlist} disabled={wishlistLoading}
                     title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -276,6 +264,16 @@ export default function ProductDetail() {
                   </button>
                 )}
               </div>
+
+              {/* ✅ Request Custom Order — sirf customizable products pe */}
+              {isCustomizable && user?.role !== 'artist' && (
+                <button onClick={handleCustomOrder}
+                  style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'transparent', color:'#C4622D', border:'1.5px solid #C4622D', padding:'13px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.78rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', cursor:'pointer', transition:'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#FFF5F0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}>
+                  <MessageCircle size={15}/> Request Custom Order
+                </button>
+              )}
 
               {inCart && (
                 <p style={{ fontSize:'0.75rem', color:'#C4622D', textAlign:'center', fontFamily:"'DM Sans',sans-serif" }}>
@@ -309,12 +307,10 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* ── Reviews ── */}
+      {/* Reviews */}
       <div style={{ borderTop:'1px solid #EDE3D5', paddingTop:48 }}>
         <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(1.6rem,2.5vw,2.2rem)', fontWeight:600, color:'#1A1208', marginBottom:32 }}>Reviews</h2>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:48 }}>
-
-          {/* Write review */}
           <div>
             <h3 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.3rem', fontWeight:600, marginBottom:16, color:'#1A1208' }}>Write a Review</h3>
             {user?.role === 'user' ? (
@@ -337,8 +333,6 @@ export default function ProductDetail() {
               </p>
             )}
           </div>
-
-          {/* Review list */}
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             {reviews.length===0 ? (
               <p style={{ fontFamily:"'DM Sans',sans-serif", color:'#8C7B6B' }}>No reviews yet. Be the first!</p>

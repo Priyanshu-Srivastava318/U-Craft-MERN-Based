@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Chat,
   Channel,
@@ -18,7 +19,9 @@ import { ArrowLeft } from 'lucide-react';
 let clientInstance = null;
 
 export default function ChatPage() {
-  const { artistId } = useParams(); // Artist._id
+  const { artistId } = useParams();
+  const [searchParams] = useSearchParams();
+  const prefilledMsg = searchParams.get('msg') || '';
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -54,6 +57,11 @@ export default function ChatPage() {
 
         const ch = clientInstance.channel('messaging', channelData.channelId);
         await ch.watch();
+
+        // ✅ Pre-filled message from product page
+        if (prefilledMsg) {
+          await ch.sendMessage({ text: prefilledMsg });
+        }
 
         setChatClient(clientInstance);
         setChannel(ch);
