@@ -20,6 +20,7 @@ import MyOrders        from './pages/MyOrders';
 import Wishlist        from './pages/Wishlist';
 import Profile         from './pages/Profile';
 import About           from './pages/About';
+import ChatPage        from './pages/Chat';
 
 function Spinner() {
   return (
@@ -30,10 +31,6 @@ function Spinner() {
   );
 }
 
-// ✅ Defined INSIDE App.jsx — no separate file needed
-// role="artist" → only artists
-// role="user"   → only users  
-// no role       → any logged-in user
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -146,10 +143,10 @@ export default function App() {
               <Route path="/artist/:id"  element={<Layout><ArtistProfile /></Layout>} />
               <Route path="/about"       element={<Layout><About /></Layout>} />
 
-              {/* Checkout — auth handled inside component */}
+              {/* Checkout */}
               <Route path="/checkout" element={<Layout hideFooter><Checkout /></Layout>} />
 
-              {/* ✅ Any logged-in user — NO role restriction */}
+              {/* Any logged-in user */}
               <Route path="/orders" element={
                 <ProtectedRoute><Layout><MyOrders /></Layout></ProtectedRoute>
               }/>
@@ -158,6 +155,11 @@ export default function App() {
               }/>
               <Route path="/profile" element={
                 <ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>
+              }/>
+
+              {/* ✅ Chat — buyers only */}
+              <Route path="/chat/:artistId" element={
+                <ProtectedRoute><Layout hideFooter><ChatPage /></Layout></ProtectedRoute>
               }/>
 
               {/* Artist only */}

@@ -66,6 +66,7 @@ app.use('/api/cart',     require('./routes/cart'));
 app.use('/api/artists',  require('./routes/artists'));
 app.use('/api/users',    require('./routes/users'));
 app.use('/api/reviews',  require('./routes/reviews'));
+app.use('/api/chat', require('./routes/chat'));
 
 // ── Health check ──
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

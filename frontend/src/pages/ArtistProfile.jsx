@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { MapPin, Star, Instagram, Globe } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Star, Instagram, Globe, MessageCircle } from 'lucide-react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function ArtistProfile() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('products');
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     api.get(`/artists/${id}`)
@@ -17,6 +22,23 @@ export default function ArtistProfile() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
+
+  // ✅ Message Artist button handler
+  const handleMessage = async () => {
+    if (!user) { navigate('/login'); return; }
+    if (user.role === 'artist') {
+      toast.error('Artists cannot message other artists');
+      return;
+    }
+    setChatLoading(true);
+    try {
+      navigate(`/chat/${data.artist._id}`);
+    } catch (err) {
+      toast.error('Could not open chat');
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-16 space-y-4">
@@ -59,7 +81,9 @@ export default function ArtistProfile() {
                 {artist.specialty && <span className="text-craft-600 font-medium">{artist.specialty}</span>}
               </div>
             </div>
-            <div className="flex gap-3 sm:mb-2">
+
+            {/* ✅ Social links + Message button */}
+            <div className="flex gap-3 sm:mb-2 items-center flex-wrap">
               {artist.socialLinks?.instagram && (
                 <a href={artist.socialLinks.instagram} target="_blank" rel="noopener noreferrer"
                   className="w-10 h-10 border border-stone-300 flex items-center justify-center hover:border-craft-400 hover:text-craft-500 transition-colors">
@@ -72,10 +96,36 @@ export default function ArtistProfile() {
                   <Globe size={16} />
                 </a>
               )}
+
+              {/* ✅ Message button — buyers only */}
+              {user?.role !== 'artist' && (
+                <button
+                  onClick={handleMessage}
+                  disabled={chatLoading}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    padding:'10px 20px',
+                    background:'#1A1208', color:'white',
+                    border:'1.5px solid #1A1208',
+                    fontFamily:"'DM Sans',sans-serif",
+                    fontSize:'0.78rem', fontWeight:600,
+                    letterSpacing:'0.12em', textTransform:'uppercase',
+                    cursor: chatLoading ? 'not-allowed' : 'pointer',
+                    opacity: chatLoading ? 0.7 : 1,
+                    transition:'all 0.2s',
+                  }}
+                  onMouseEnter={e => { if (!chatLoading) { e.currentTarget.style.background='#C4622D'; e.currentTarget.style.borderColor='#C4622D'; }}}
+                  onMouseLeave={e => { e.currentTarget.style.background='#1A1208'; e.currentTarget.style.borderColor='#1A1208'; }}
+                >
+                  <MessageCircle size={15}/>
+                  {chatLoading ? 'Opening...' : 'Message Artist'}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             [products.length, 'Products'],
