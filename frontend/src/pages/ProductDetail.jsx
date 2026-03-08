@@ -109,11 +109,31 @@ export default function ProductDetail() {
     finally { setWishlistLoading(false); }
   };
 
+  // ✅ Review submit
+  const handleReview = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.post('/reviews', {
+        productId: id,
+        artistId: product.artist?._id,
+        rating: reviewForm.rating,
+        comment: reviewForm.comment
+      });
+      toast.success('Review submitted!');
+      setReviewForm({ rating:5, comment:'' });
+      fetchProduct();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // ✅ Custom order — chat open with pre-filled message
   const handleCustomOrder = () => {
     if (!user) { navigate('/login'); return; }
     if (user.role === 'artist') { toast.error('Artists cannot place orders'); return; }
-    // Navigate to chat with artist, pre-fill message via query param
     const msg = encodeURIComponent(`Hi! I'm interested in a custom version of "${product.name}". Can we discuss the details?`);
     navigate(`/chat/${product.artist?._id}?msg=${msg}`);
   };
