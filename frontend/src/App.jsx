@@ -20,8 +20,8 @@ import MyOrders        from './pages/MyOrders';
 import Wishlist        from './pages/Wishlist';
 import Profile         from './pages/Profile';
 import About           from './pages/About';
-import ChatPage        from './pages/chat';
-import AdminDashboard  from './pages/AdminDashboard';  // ✅ already imported
+import ChatPage        from './pages/Chat';
+import AdminDashboard  from './pages/AdminDashboard';  
 
 function Spinner() {
   return (
