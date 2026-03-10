@@ -20,7 +20,8 @@ import MyOrders        from './pages/MyOrders';
 import Wishlist        from './pages/Wishlist';
 import Profile         from './pages/Profile';
 import About           from './pages/About';
-import ChatPage        from './pages/Chat';
+import ChatPage        from './pages/chat';
+import AdminDashboard  from './pages/AdminDashboard';  // ✅ already imported
 
 function Spinner() {
   return (
@@ -143,6 +144,9 @@ export default function App() {
               <Route path="/artist/:id"  element={<Layout><ArtistProfile /></Layout>} />
               <Route path="/about"       element={<Layout><About /></Layout>} />
 
+              {/* ✅ Admin — no Navbar/Footer, no auth required (self-protected via key) */}
+              <Route path="/admin" element={<AdminDashboard />} />
+
               {/* Checkout */}
               <Route path="/checkout" element={<Layout hideFooter><Checkout /></Layout>} />
 
@@ -157,7 +161,7 @@ export default function App() {
                 <ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>
               }/>
 
-              {/* ✅ Chat — buyers only */}
+              {/* Chat — buyers only */}
               <Route path="/chat/:artistId" element={
                 <ProtectedRoute><Layout hideFooter><ChatPage /></Layout></ProtectedRoute>
               }/>

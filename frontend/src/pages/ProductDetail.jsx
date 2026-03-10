@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 function Stars({ rating, onRate, readonly, size = 18 }) {
   const [hovered, setHovered] = useState(0);
-  return (
+  return ( 
     <div style={{ display:'flex', gap:2 }}>
       {[1,2,3,4,5].map(i => (
         <span key={i}
