@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   Users, ShoppingBag, Package, TrendingUp,
   Trash2, ShieldCheck, Star, RefreshCw, LogOut, CheckCircle
