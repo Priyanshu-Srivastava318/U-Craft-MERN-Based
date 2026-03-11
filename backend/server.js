@@ -14,6 +14,8 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://u-craft.in',
+  'https://www.u-craft.in',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
