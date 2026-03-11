@@ -1,4 +1,3 @@
-// backend/routes/products.js
 const express = require('express');
 const router  = express.Router();
 const Product = require('../models/Product');
@@ -6,7 +5,6 @@ const Artist  = require('../models/Artist');
 const { protect, artistOnly }     = require('../middleware/auth');
 const { cloudinary, uploadProduct } = require('../config/cloudinary');
 
-// ─── Helper: wrap multer in promise ───────────────────────────────────────────
 function runUpload(req, res) {
   return new Promise((resolve, reject) => {
     uploadProduct(req, res, (err) => {
@@ -15,10 +13,6 @@ function runUpload(req, res) {
     });
   });
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IMPORTANT: specific named routes BEFORE /:id
-// ─────────────────────────────────────────────────────────────────────────────
 
 // GET /api/products/artist/my-products
 router.get('/artist/my-products', protect, artistOnly, async (req, res) => {
@@ -32,7 +26,27 @@ router.get('/artist/my-products', protect, artistOnly, async (req, res) => {
   }
 });
 
-// GET /api/products  (public listing)
+// GET /api/products/:id/similar
+router.get('/:id/similar', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json([]);
+
+    const similar = await Product.find({
+      _id: { $ne: req.params.id },
+      category: product.category,
+      isActive: true,
+    })
+      .populate('artist', 'brandName coverImage')
+      .limit(4);
+
+    res.json(similar);
+  } catch (err) {
+    res.status(500).json([]);
+  }
+});
+
+// GET /api/products
 router.get('/', async (req, res) => {
   try {
     const { category, search, minPrice, maxPrice, sort, artist, page = 1, limit = 12 } = req.query;
@@ -79,25 +93,21 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/products  — create with image upload
+// POST /api/products
 router.post('/', protect, artistOnly, async (req, res) => {
   try {
-    // Run multer (handles multipart/form-data)
     await runUpload(req, res);
 
     const artistProfile = await Artist.findOne({ user: req.user._id });
     if (!artistProfile) return res.status(404).json({ message: 'Artist profile not found' });
 
-    // Collect uploaded image URLs from cloudinary
     const uploadedImages = (req.files || []).map(f => f.path);
 
-    // Parse body fields (sent as FormData strings)
     const {
       name, description, price, comparePrice,
       category, stock, tags,
     } = req.body;
 
-    // specifications comes as JSON string from frontend
     let specifications = {};
     try { specifications = JSON.parse(req.body.specifications || '{}'); } catch {}
 
@@ -120,7 +130,7 @@ router.post('/', protect, artistOnly, async (req, res) => {
   }
 });
 
-// PUT /api/products/:id  — update (optionally replace images)
+// PUT /api/products/:id
 router.put('/:id', protect, artistOnly, async (req, res) => {
   try {
     await runUpload(req, res);
@@ -131,19 +141,16 @@ router.put('/:id', protect, artistOnly, async (req, res) => {
     const existing = await Product.findOne({ _id: req.params.id, artist: artistProfile._id });
     if (!existing) return res.status(404).json({ message: 'Product not found or unauthorized' });
 
-    // New images uploaded?
     const newImages = (req.files || []).map(f => f.path);
 
-    // If new images uploaded → delete old ones from cloudinary
     if (newImages.length > 0 && existing.images?.length > 0) {
       for (const imgUrl of existing.images) {
         try {
-          // Extract public_id from URL
           const parts = imgUrl.split('/');
           const filename = parts[parts.length - 1].split('.')[0];
           const folder   = parts[parts.length - 2];
           await cloudinary.uploader.destroy(`${folder}/${filename}`);
-        } catch {} // non-fatal
+        } catch {}
       }
     }
 
@@ -183,7 +190,6 @@ router.delete('/:id', protect, artistOnly, async (req, res) => {
     const product = await Product.findOneAndDelete({ _id: req.params.id, artist: artistProfile._id });
     if (!product) return res.status(404).json({ message: 'Product not found or unauthorized' });
 
-    // Delete images from cloudinary
     for (const imgUrl of (product.images || [])) {
       try {
         const parts    = imgUrl.split('/');

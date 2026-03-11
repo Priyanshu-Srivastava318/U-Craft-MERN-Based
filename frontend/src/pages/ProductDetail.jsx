@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 function Stars({ rating, onRate, readonly, size = 18 }) {
   const [hovered, setHovered] = useState(0);
-  return ( 
+  return (
     <div style={{ display:'flex', gap:2 }}>
       {[1,2,3,4,5].map(i => (
         <span key={i}
@@ -29,6 +29,7 @@ export default function ProductDetail() {
 
   const [product,         setProduct]         = useState(null);
   const [reviews,         setReviews]         = useState([]);
+  const [similarProducts, setSimilarProducts] = useState([]);
   const [loading,         setLoading]         = useState(true);
   const [imgIdx,          setImgIdx]          = useState(0);
   const [qty,             setQty]             = useState(1);
@@ -44,7 +45,7 @@ export default function ProductDetail() {
   const { user } = useAuth();
   const inCart = isInCart(id);
 
-  useEffect(() => { fetchProduct(); }, [id]);
+  useEffect(() => { fetchProduct(); fetchSimilar(); }, [id]);
 
   useEffect(() => {
     if (!user || user.role !== 'user') { setWishlistChecked(true); return; }
@@ -69,6 +70,13 @@ export default function ProductDetail() {
       setReviews(Array.isArray(rRes.data) ? rRes.data : []);
     } catch { toast.error('Product not found'); }
     finally { setLoading(false); }
+  };
+
+  const fetchSimilar = async () => {
+    try {
+      const { data } = await api.get(`/products/${id}/similar`);
+      setSimilarProducts(data);
+    } catch {}
   };
 
   const handleAddToCart = async () => {
@@ -109,7 +117,6 @@ export default function ProductDetail() {
     finally { setWishlistLoading(false); }
   };
 
-  // ✅ Review submit
   const handleReview = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -130,7 +137,6 @@ export default function ProductDetail() {
     }
   };
 
-  // ✅ Custom order — chat open with pre-filled message
   const handleCustomOrder = () => {
     if (!user) { navigate('/login'); return; }
     if (user.role === 'artist') { toast.error('Artists cannot place orders'); return; }
@@ -259,7 +265,6 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {/* BUY NOW */}
               <button onClick={handleBuyNow} disabled={buyingNow}
                 style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#C4622D', color:'white', border:'none', padding:'16px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.84rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', cursor:buyingNow?'not-allowed':'pointer', opacity:buyingNow?0.7:1, transition:'background 0.2s' }}
                 onMouseEnter={e => { if(!buyingNow) e.currentTarget.style.background='#a8501f'; }}
@@ -267,7 +272,6 @@ export default function ProductDetail() {
                 {buyingNow ? <><Spinner/> Processing…</> : <><Zap size={15} fill="white"/> Buy Now</>}
               </button>
 
-              {/* ADD TO CART + WISHLIST */}
               <div style={{ display:'flex', gap:10 }}>
                 <button onClick={handleAddToCart} disabled={adding}
                   style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:inCart?'#1A1208':'transparent', color:inCart?'white':'#1A1208', border:'1.5px solid #1A1208', padding:'13px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.78rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', cursor:adding?'not-allowed':'pointer', opacity:adding?0.6:1, transition:'all 0.2s' }}>
@@ -285,7 +289,6 @@ export default function ProductDetail() {
                 )}
               </div>
 
-              {/* ✅ Request Custom Order — sirf customizable products pe */}
               {isCustomizable && user?.role !== 'artist' && (
                 <button onClick={handleCustomOrder}
                   style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'transparent', color:'#C4622D', border:'1.5px solid #C4622D', padding:'13px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.78rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', cursor:'pointer', transition:'all 0.2s' }}
@@ -376,6 +379,44 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {/* Similar Products */}
+      {similarProducts.length > 0 && (
+        <div style={{ borderTop:'1px solid #EDE3D5', paddingTop:48, marginTop:48 }}>
+          <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(1.6rem,2.5vw,2.2rem)', fontWeight:600, color:'#1A1208', marginBottom:32 }}>
+            Similar Products
+          </h2>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:24 }}>
+            {similarProducts.map(p => (
+              <Link to={`/product/${p._id}`} key={p._id}
+                style={{ textDecoration:'none', color:'inherit', border:'1px solid #EDE3D5', transition:'border-color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor='#C4622D'}
+                onMouseLeave={e => e.currentTarget.style.borderColor='#EDE3D5'}>
+                <div style={{ aspectRatio:'1/1', overflow:'hidden', background:'#F5F0EA' }}>
+                  <img
+                    src={p.images?.[0] || 'https://placehold.co/400x400/f5ede0/8a6340?text=Craft'}
+                    alt={p.name}
+                    style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform 0.3s' }}
+                    onMouseEnter={e => e.currentTarget.style.transform='scale(1.05)'}
+                    onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}
+                  />
+                </div>
+                <div style={{ padding:12 }}>
+                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B', margin:'0 0 4px' }}>
+                    {p.artist?.brandName}
+                  </p>
+                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.1rem', fontWeight:600, color:'#1A1208', margin:'0 0 8px' }}>
+                    {p.name}
+                  </p>
+                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', color:'#C4622D', margin:0 }}>
+                    ₹{p.price?.toLocaleString()}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
