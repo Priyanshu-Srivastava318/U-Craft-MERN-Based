@@ -6,7 +6,7 @@ import {
 import toast from 'react-hot-toast';
 
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || 'ucraft_admin_secret_2025';
-const BASE      = import.meta.env.VITE_API_URL   || 'http://localhost:5000';
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
 
 const STATUS_COLORS = {
   placed:     { bg: '#EBF5FF', text: '#1D6FA4' },
@@ -19,7 +19,7 @@ const STATUS_COLORS = {
 const STATUS_OPTIONS = ['placed','confirmed','processing','shipped','delivered','cancelled'];
 
 const req = (path, opts = {}) =>
-  fetch(`${BASE}/api/admin${path}`, {
+  fetch(`${BASE}/admin${path}`, {
     headers: { 'x-admin-key': ADMIN_KEY, 'Content-Type': 'application/json' },
     ...opts,
   }).then(r => r.json());
