@@ -70,10 +70,42 @@ router.post('/razorpay/verify', protect, async (req, res) => {
       io.to(`user-${order.user}`).emit('order-confirmed', order);
     }
 
-    // ✅ Fire and forget
     User.findById(order.user).then(buyer => {
       if (buyer) sendOrderStatusUpdate({ buyerEmail: buyer.email, buyerName: buyer.name, order, newStatus: 'confirmed' }).catch(() => {});
     }).catch(() => {});
+
+    res.json({ success: true, order });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── REFUND REQUEST — user submits ───────────────────────────
+router.post('/:id/refund-request', protect, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ message: 'Reason is required' });
+
+    const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (order.refundRequest?.status === 'pending')
+      return res.status(400).json({ message: 'Refund request already submitted' });
+
+    if (order.refundRequest?.status === 'approved')
+      return res.status(400).json({ message: 'Refund already approved' });
+
+    if (order.orderStatus === 'delivered')
+      return res.status(400).json({ message: 'Delivered orders cannot be cancelled. Contact support.' });
+
+    if (order.orderStatus === 'cancelled')
+      return res.status(400).json({ message: 'Order is already cancelled' });
+
+    order.refundRequest = {
+      status: 'pending',
+      reason,
+      requestedAt: new Date(),
+      adminNote: '',
+    };
+    await order.save();
 
     res.json({ success: true, order });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -111,7 +143,6 @@ router.post('/', protect, async (req, res) => {
       orderNumber: `UC${Date.now()}`,
     });
 
-    // Socket
     if (paymentMethod === 'COD') {
       const io = req.app.get('io');
       const artistIds = [...new Set(items.map(i => i.artist?.toString()).filter(Boolean))];
@@ -119,20 +150,13 @@ router.post('/', protect, async (req, res) => {
       if (io) io.to(`user-${req.user._id}`).emit('order-confirmed', order);
     }
 
-    // ✅ Cart clear
     await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
 
-    // ✅ Respond IMMEDIATELY — emails fire in background
     res.status(201).json(order);
 
-    // ✅ Fire and forget — after response sent
     User.findById(req.user._id).then(async buyer => {
       if (!buyer) return;
-
-      // Buyer ko order placed
       sendOrderPlaced({ buyerEmail: buyer.email, buyerName: buyer.name, order }).catch(() => {});
-
-      // Har artist ko new order
       const uniqueArtistIds = [...new Set(items.map(i => i.artist?.toString()).filter(Boolean))];
       for (const artistId of uniqueArtistIds) {
         Artist.findById(artistId).populate('user', 'name email').then(artistDoc => {
@@ -167,7 +191,6 @@ router.put('/:id/status', protect, artistOnly, async (req, res) => {
     const io = req.app.get('io');
     if (io) io.to(`user-${order.user}`).emit('order-status-updated', { orderId: order._id, status, orderNumber: order.orderNumber });
 
-    // ✅ Respond immediately, email background mein
     res.json(order);
 
     User.findById(order.user).then(buyer => {

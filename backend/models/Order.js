@@ -33,6 +33,20 @@ const orderSchema = new mongoose.Schema({
   total: { type: Number, required: true },
   notes: { type: String, default: '' },
   orderNumber: { type: String, unique: true },
+
+  // ── Refund Request ──────────────────────────────────────
+  refundRequest: {
+    status: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected'],
+      default: 'none'
+    },
+    reason: { type: String, default: '' },
+    requestedAt: { type: Date },
+    resolvedAt: { type: Date },
+    adminNote: { type: String, default: '' },
+  },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

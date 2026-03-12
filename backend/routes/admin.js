@@ -25,22 +25,22 @@ router.get("/stats", async (req, res) => {
     const [
       totalUsers, totalArtists, totalProducts,
       totalOrders, revenueAgg, recentOrders,
-      pendingOrders,
+      pendingOrders, pendingRefunds,
     ] = await Promise.all([
       User.countDocuments(),
       Artist.countDocuments(),
       Product.countDocuments(),
       Order.countDocuments(),
       Order.aggregate([{ $group: { _id: null, total: { $sum: "$total" } } }]),
-      Order.find().sort({ createdAt: -1 }).limit(5)
-        .populate("user", "name email"),
+      Order.find().sort({ createdAt: -1 }).limit(5).populate("user", "name email"),
       Order.countDocuments({ orderStatus: "placed" }),
+      Order.countDocuments({ "refundRequest.status": "pending" }),
     ]);
 
     res.json({
       totalUsers, totalArtists, totalProducts, totalOrders,
       totalRevenue: revenueAgg[0]?.total || 0,
-      recentOrders, pendingOrders,
+      recentOrders, pendingOrders, pendingRefunds,
     });
   } catch (err) {
     console.error("Admin stats error:", err);
@@ -162,6 +162,55 @@ router.delete("/orders/:id", async (req, res) => {
     await Order.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: "Failed to delete order" }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REFUND REQUESTS
+// ══════════════════════════════════════════════════════════════════════════════
+router.get("/refund-requests", async (req, res) => {
+  try {
+    const orders = await Order.find({ "refundRequest.status": "pending" })
+      .populate("user", "name email")
+      .sort({ "refundRequest.requestedAt": -1 });
+    res.json(orders);
+  } catch (err) { res.status(500).json({ error: "Failed to fetch refund requests" }); }
+});
+
+router.patch("/refund-requests/:id/approve", async (req, res) => {
+  try {
+    const { adminNote } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      {
+        "refundRequest.status": "approved",
+        "refundRequest.resolvedAt": new Date(),
+        "refundRequest.adminNote": adminNote || "Your refund has been approved.",
+        orderStatus: "cancelled",
+        updatedAt: Date.now(),
+      },
+      { new: true }
+    ).populate("user", "name email");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  } catch (err) { res.status(500).json({ error: "Failed to approve refund" }); }
+});
+
+router.patch("/refund-requests/:id/reject", async (req, res) => {
+  try {
+    const { adminNote } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      {
+        "refundRequest.status": "rejected",
+        "refundRequest.resolvedAt": new Date(),
+        "refundRequest.adminNote": adminNote || "Your refund request has been rejected.",
+        updatedAt: Date.now(),
+      },
+      { new: true }
+    ).populate("user", "name email");
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  } catch (err) { res.status(500).json({ error: "Failed to reject refund" }); }
 });
 
 module.exports = router;
