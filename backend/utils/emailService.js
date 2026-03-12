@@ -1,8 +1,14 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-const FROM = 'UCraft <onboarding@resend.dev>';
+const FROM = `UCraft <${process.env.EMAIL_USER}>`;
 
 // ── Base HTML wrapper ────────────────────────────────────────
 const baseTemplate = (content) => `
@@ -99,8 +105,7 @@ const renderStages = (currentStatus) => {
 
 // ── Send helper ──────────────────────────────────────────────
 const send = async ({ to, subject, html }) => {
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
-  if (error) throw new Error(error.message);
+  await transporter.sendMail({ from: FROM, to, subject, html });
 };
 
 // ════════════════════════════════════════════════════════════
