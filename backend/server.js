@@ -23,7 +23,6 @@ const allowedOrigins = [
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
-  // ✅ Saare Vercel preview/deployment URLs allow karo
   if (origin.endsWith('.vercel.app')) return true;
   return false;
 };
@@ -60,6 +59,23 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ── Make io accessible to routes ──
 app.set('io', io);
 
+// ── Stats Route ──
+const Artist  = require('./models/Artist');
+const Product = require('./models/Product');
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const [artists, products, categoryData] = await Promise.all([
+      Artist.countDocuments(),
+      Product.countDocuments({ isActive: true }),
+      Product.distinct('category', { isActive: true }),
+    ]);
+    res.json({ artists, products, categories: categoryData.length });
+  } catch (err) {
+    res.status(500).json({ artists: 0, products: 0, categories: 0 });
+  }
+});
+
 // ── Routes ──
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
@@ -68,8 +84,8 @@ app.use('/api/cart',     require('./routes/cart'));
 app.use('/api/artists',  require('./routes/artists'));
 app.use('/api/users',    require('./routes/users'));
 app.use('/api/reviews',  require('./routes/reviews'));
-app.use('/api/chat', require('./routes/chat'));
-app.use('/api/admin', require('./routes/admin'));
+app.use('/api/chat',     require('./routes/chat'));
+app.use('/api/admin',    require('./routes/admin'));
 
 // ── Health check ──
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

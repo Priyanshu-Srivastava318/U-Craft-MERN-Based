@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, ChevronLeft, ChevronRight, ArrowRight, Zap, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Heart, ChevronLeft, ChevronRight, ArrowRight, Zap, MessageCircle, Share2 } from 'lucide-react';
 import api from '../utils/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -142,6 +142,22 @@ export default function ProductDetail() {
     if (user.role === 'artist') { toast.error('Artists cannot place orders'); return; }
     const msg = encodeURIComponent(`Hi! I'm interested in a custom version of "${product.name}". Can we discuss the details?`);
     navigate(`/chat/${product.artist?._id}?msg=${msg}`);
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: `Check out "${product.name}" on U-Craft!`,
+          url,
+        });
+      } catch {}
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard!');
+    }
   };
 
   const Spinner = ({ dark }) => (
@@ -287,6 +303,15 @@ export default function ProductDetail() {
                     {wishlistLoading ? <Spinner dark/> : <Heart size={18} fill={wishlisted?'currentColor':'none'}/>}
                   </button>
                 )}
+
+                {/* Share Button */}
+                <button onClick={handleShare}
+                  title="Share this product"
+                  style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'13px 16px', border:'1.5px solid #1A1208', background:'transparent', color:'#1A1208', cursor:'pointer', transition:'all 0.2s', flexShrink:0 }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#1A1208'; e.currentTarget.style.color='white'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#1A1208'; }}>
+                  <Share2 size={18}/>
+                </button>
               </div>
 
               {isCustomizable && user?.role !== 'artist' && (

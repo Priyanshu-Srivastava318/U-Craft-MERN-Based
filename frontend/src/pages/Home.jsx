@@ -32,6 +32,7 @@ function Counter({ end, suffix = '' }) {
   const [val, setVal] = useState(0);
   const ref = useRef(null);
   useEffect(() => {
+    if (!end) return;
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(([e]) => {
@@ -67,6 +68,7 @@ export default function Home() {
   const { user, isArtist } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [stats, setStats]       = useState({ artists: 0, products: 0, categories: 0 });
 
   const missionRef = useReveal();
   const productRef = useReveal();
@@ -77,6 +79,10 @@ export default function Home() {
       .then(({ data }) => setProducts(Array.isArray(data) ? data : data.products ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    api.get('/stats')
+      .then(({ data }) => setStats(data))
+      .catch(() => {});
   }, []);
 
   return (
@@ -151,12 +157,12 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Stats */}
+                {/* Stats — Real data */}
                 <div className="uc-sg" style={{ display:'flex', gap:0, borderTop:'1px solid #D5CAC0', paddingTop:26 }}>
                   {[
-                    { n:500,   sfx:'+', label:'Artisans' },
-                    { n:12000, sfx:'+', label:'Handcrafted items' },
-                    { n:50,    sfx:'+', label:'Craft categories' },
+                    { n: stats.artists,    sfx:'+', label:'Artisans' },
+                    { n: stats.products,   sfx:'+', label:'Handcrafted items' },
+                    { n: stats.categories, sfx:'+', label:'Craft categories' },
                   ].map((s,i) => (
                     <div key={s.label} style={{
                       flex:1,
