@@ -2,19 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, ShoppingBag, Star, TrendingUp,
-  Plus, Edit2, Trash2, Eye, Bell, X, ImagePlus, Menu
+  Plus, Edit2, Trash2, Eye, Bell, X, ImagePlus, UserCircle
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const STATUS_COLORS = {
-  placed:     { bg: '#EBF5FF', text: '#1D6FA4' },
-  confirmed:  { bg: '#EEEBFF', text: '#5B41C4' },
-  processing: { bg: '#FFF8EB', text: '#B45309' },
-  shipped:    { bg: '#F3EBFF', text: '#7C3AED' },
-  delivered:  { bg: '#EBFFF0', text: '#166534' },
-  cancelled:  { bg: '#FFEBEB', text: '#B91C1C' },
+  placed:     { bg:'#EBF5FF', text:'#1D6FA4' },
+  confirmed:  { bg:'#EEEBFF', text:'#5B41C4' },
+  processing: { bg:'#FFF8EB', text:'#B45309' },
+  shipped:    { bg:'#F3EBFF', text:'#7C3AED' },
+  delivered:  { bg:'#EBFFF0', text:'#166534' },
+  cancelled:  { bg:'#FFEBEB', text:'#B91C1C' },
 };
 const STATUS_OPTIONS = ['placed','confirmed','processing','shipped','delivered','cancelled'];
 const CATEGORIES = ['Paintings','Pottery','Jewelry','Textiles','Woodwork','Metalwork','Leather','Glass','Paper','Other'];
@@ -39,40 +39,22 @@ function ImageUploadZone({ images, onChange }) {
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={e => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
-        style={{
-          border: `2px dashed ${dragging ? 'var(--clay)' : '#D5CAC0'}`,
-          background: dragging ? 'rgba(196,98,45,.04)' : 'var(--parch)',
-          padding: '28px 20px', textAlign: 'center', cursor: 'pointer',
-          transition: 'all .2s', marginBottom: 12,
-        }}
-      >
-        <ImagePlus size={28} style={{ color: 'var(--stone)', margin: '0 auto 8px' }} />
-        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize: '.85rem', color: 'var(--stone)', marginBottom: 4 }}>
-          Click or drag images here
-        </p>
-        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize: '.72rem', color: '#B0A090' }}>
-          JPG, PNG, WEBP · Max 5MB each · Up to 4 images
-        </p>
-        <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-          onChange={e => addFiles(e.target.files)} />
+        style={{ border:`2px dashed ${dragging?'var(--clay)':'#D5CAC0'}`, background:dragging?'rgba(196,98,45,.04)':'var(--parch)', padding:'28px 20px', textAlign:'center', cursor:'pointer', transition:'all .2s', marginBottom:12 }}>
+        <ImagePlus size={28} style={{ color:'var(--stone)', margin:'0 auto 8px' }}/>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.85rem', color:'var(--stone)', marginBottom:4 }}>Click or drag images here</p>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'#B0A090' }}>JPG, PNG, WEBP · Max 5MB each · Up to 4 images</p>
+        <input ref={inputRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)}/>
       </div>
       {images.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          {images.map((img, i) => (
-            <div key={i} style={{ position: 'relative', aspectRatio: '1', background: '#f0e8de' }}>
-              <img src={typeof img === 'string' ? img : URL.createObjectURL(img)} alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+          {images.map((img,i) => (
+            <div key={i} style={{ position:'relative', aspectRatio:'1', background:'#f0e8de' }}>
+              <img src={typeof img==='string'?img:URL.createObjectURL(img)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
               <button type="button" onClick={() => remove(i)}
-                style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(26,18,8,.75)',
-                  border: 'none', color: 'white', borderRadius: '50%', width: 22, height: 22,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={11} />
+                style={{ position:'absolute', top:4, right:4, background:'rgba(26,18,8,.75)', border:'none', color:'white', borderRadius:'50%', width:22, height:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <X size={11}/>
               </button>
-              {i === 0 && (
-                <span style={{ position: 'absolute', bottom: 4, left: 4, background: 'var(--clay)',
-                  color: 'white', fontSize: '.58rem', fontWeight: 700, letterSpacing: '.1em',
-                  padding: '2px 6px', textTransform: 'uppercase' }}>Main</span>
-              )}
+              {i===0 && <span style={{ position:'absolute', bottom:4, left:4, background:'var(--clay)', color:'white', fontSize:'.58rem', fontWeight:700, letterSpacing:'.1em', padding:'2px 6px', textTransform:'uppercase' }}>Main</span>}
             </div>
           ))}
         </div>
@@ -83,22 +65,27 @@ function ImageUploadZone({ images, onChange }) {
 
 export default function ArtistDashboard() {
   const { user, artistProfile, socket } = useAuth();
-  const [activeTab,  setActiveTab]  = useState('overview');
-  const [stats,      setStats]      = useState(null);
-  const [products,   setProducts]   = useState([]);
-  const [orders,     setOrders]     = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [showForm,   setShowForm]   = useState(false);
-  const [editingId,  setEditingId]  = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [activeTab,     setActiveTab]     = useState('overview');
+  const [stats,         setStats]         = useState(null);
+  const [products,      setProducts]      = useState([]);
+  const [orders,        setOrders]        = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showForm,      setShowForm]      = useState(false);
+  const [editingId,     setEditingId]     = useState(null);
+  const [submitting,    setSubmitting]    = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [mobileTabOpen, setMobileTabOpen] = useState(false);
+
+  // Profile edit state
+  const [profileForm,    setProfileForm]    = useState({ brandName:'', bio:'', location:'', specialty:'', instagram:'', website:'' });
+  const [profileSaving,  setProfileSaving]  = useState(false);
+  const [coverFile,      setCoverFile]      = useState(null);
+  const [coverPreview,   setCoverPreview]   = useState(null);
 
   const emptyForm = {
-    name: '', description: '', price: '', comparePrice: '',
-    category: 'Pottery', stock: '', tags: '',
-    specifications: { material: '', dimensions: '', weight: '', color: '', customizable: false },
-    imageFiles: [], existingImages: [],
+    name:'', description:'', price:'', comparePrice:'',
+    category:'Pottery', stock:'', tags:'',
+    specifications:{ material:'', dimensions:'', weight:'', color:'', customizable:false },
+    imageFiles:[], existingImages:[],
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -107,48 +94,68 @@ export default function ArtistDashboard() {
   useEffect(() => {
     if (!socket) return;
     socket.on('new-order', (data) => {
-      setNotifications(p => [{ ...data, id: Date.now(), read: false }, ...p]);
+      setNotifications(p => [{ ...data, id:Date.now(), read:false }, ...p]);
       toast.success(`New order! #${data.orderNumber}`);
       fetchOrders();
     });
     return () => socket.off('new-order');
   }, [socket]);
 
-  const fetchAll      = async () => { try { await Promise.all([fetchStats(), fetchProducts(), fetchOrders()]); } finally { setLoading(false); } };
+  const fetchAll      = async () => { try { await Promise.all([fetchStats(), fetchProducts(), fetchOrders(), fetchProfile()]); } finally { setLoading(false); } };
   const fetchStats    = async () => { const { data } = await api.get('/artists/dashboard/stats'); setStats(data); };
-  const fetchProducts = async () => { const { data } = await api.get('/products/artist/my-products'); setProducts(Array.isArray(data) ? data : []); };
-  const fetchOrders   = async () => { const { data } = await api.get('/orders/artist-orders'); setOrders(Array.isArray(data) ? data : []); };
+  const fetchProducts = async () => { const { data } = await api.get('/products/artist/my-products'); setProducts(Array.isArray(data)?data:[]); };
+  const fetchOrders   = async () => { const { data } = await api.get('/orders/artist-orders'); setOrders(Array.isArray(data)?data:[]); };
+  const fetchProfile  = async () => {
+    try {
+      if (!artistProfile?._id) return;
+      const { data } = await api.get(`/artists/${artistProfile._id}`);
+      const a = data.artist;
+      setProfileForm({
+        brandName:  a.brandName              || '',
+        bio:        a.bio                    || '',
+        location:   a.location               || '',
+        specialty:  a.specialty              || '',
+        instagram:  a.socialLinks?.instagram || '',
+        website:    a.socialLinks?.website   || '',
+      });
+      if (a.coverImage) setCoverPreview(a.coverImage);
+    } catch {}
+  };
 
   const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false); };
 
   const startEdit = (p) => {
-    setForm({ name: p.name, description: p.description, price: p.price, comparePrice: p.comparePrice || '',
-      category: p.category, stock: p.stock, tags: p.tags?.join(', ') || '',
-      specifications: { ...p.specifications }, imageFiles: [], existingImages: p.images || [] });
+    setForm({ name:p.name, description:p.description, price:p.price, comparePrice:p.comparePrice||'',
+      category:p.category, stock:p.stock, tags:p.tags?.join(', ')||'',
+      specifications:{ ...p.specifications }, imageFiles:[], existingImages:p.images||[] });
     setEditingId(p._id); setShowForm(true); setActiveTab('products');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top:0, behavior:'smooth' });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.imageFiles.length === 0 && form.existingImages.length === 0) { toast.error('Please add at least one image'); return; }
+    if (form.imageFiles.length===0 && form.existingImages.length===0) { toast.error('Please add at least one image'); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append('name', form.name); fd.append('description', form.description);
-      fd.append('price', form.price); fd.append('comparePrice', form.comparePrice || 0);
-      fd.append('category', form.category); fd.append('stock', form.stock);
-      fd.append('tags', form.tags); fd.append('specifications', JSON.stringify(form.specifications));
+      fd.append('name',           form.name);
+      fd.append('description',    form.description);
+      fd.append('price',          form.price);
+      fd.append('comparePrice',   form.comparePrice||0);
+      fd.append('category',       form.category);
+      fd.append('stock',          form.stock);
+      fd.append('tags',           form.tags);
+      fd.append('specifications', JSON.stringify(form.specifications));
       form.imageFiles.forEach(f => fd.append('images', f));
       if (editingId) {
-        await api.put(`/products/${editingId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/products/${editingId}`, fd, { headers:{ 'Content-Type':'multipart/form-data' } });
         toast.success('Product updated!');
       } else {
-        await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/products', fd, { headers:{ 'Content-Type':'multipart/form-data' } });
         toast.success('Product listed!');
       }
       await fetchProducts(); await fetchStats(); resetForm();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to save'); }
+    } catch (err) { toast.error(err.response?.data?.message||'Failed to save'); }
     finally { setSubmitting(false); }
   };
 
@@ -161,6 +168,25 @@ export default function ArtistDashboard() {
   const handleOrderStatus = async (orderId, status) => {
     try { await api.put(`/orders/${orderId}/status`, { status }); toast.success('Updated!'); fetchOrders(); }
     catch { toast.error('Failed to update'); }
+  };
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('brandName',   profileForm.brandName);
+      fd.append('bio',         profileForm.bio);
+      fd.append('location',    profileForm.location);
+      fd.append('specialty',   profileForm.specialty);
+      fd.append('socialLinks', JSON.stringify({ instagram:profileForm.instagram, website:profileForm.website }));
+      if (coverFile) fd.append('cover', coverFile);
+      await api.put('/artists/profile', fd, { headers:{ 'Content-Type':'multipart/form-data' } });
+      toast.success('Profile updated!');
+      setCoverFile(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update');
+    } finally { setProfileSaving(false); }
   };
 
   const S = {
@@ -180,7 +206,7 @@ export default function ArtistDashboard() {
     </div>
   );
 
-  const newOrderCount = orders.filter(o=>o.orderStatus==='placed').length;
+  const newOrderCount = orders.filter(o => o.orderStatus==='placed').length;
 
   return (
     <>
@@ -195,40 +221,32 @@ export default function ArtistDashboard() {
         .prod-card{border:1px solid #E8DDD4;background:white;overflow:hidden;transition:box-shadow .2s;}
         .prod-card:hover{box-shadow:0 4px 16px rgba(26,18,8,.08);}
         select.dash-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238C7B6B' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
-
-        /* ── Responsive ── */
         .dash-page{max-width:1280px;margin:0 auto;padding:24px 16px;}
         @media(min-width:640px){.dash-page{padding:32px 24px;}}
         @media(min-width:1024px){.dash-page{padding:32px 40px;}}
-
         .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12;}
         @media(min-width:768px){.stats-grid{grid-template-columns:repeat(4,1fr);gap:14;}}
-
         .overview-grid{display:grid;grid-template-columns:1fr;gap:16;}
         @media(min-width:768px){.overview-grid{grid-template-columns:1fr 1fr;}}
-
         .form-grid-2{display:grid;grid-template-columns:1fr;gap:14;}
         @media(min-width:640px){.form-grid-2{grid-template-columns:1fr 1fr;}}
-
         .specs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12;}
         @media(min-width:640px){.specs-grid{grid-template-columns:repeat(4,1fr);}}
-
         .products-grid{display:grid;grid-template-columns:1fr;gap:14;}
         @media(min-width:480px){.products-grid{grid-template-columns:repeat(2,1fr);}}
         @media(min-width:900px){.products-grid{grid-template-columns:repeat(3,1fr);}}
-
         .order-header{display:flex;flex-direction:column;gap:12;}
         @media(min-width:600px){.order-header{flex-direction:row;justify-content:space-between;align-items:flex-start;}}
-
         .stat-value{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;color:var(--ink);line-height:1;}
         @media(min-width:768px){.stat-value{font-size:2.4rem;}}
-
         .dash-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12;}
         .header-title{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;color:var(--ink);line-height:1.1;}
         @media(min-width:640px){.header-title{font-size:2.2rem;}}
-
         .form-full{grid-column:1/-1;}
+        .prof-grid{display:grid;grid-template-columns:1fr;gap:14;}
+        @media(min-width:640px){.prof-grid{grid-template-columns:1fr 1fr;}}
         @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes skp{0%{background-position:200% 0}100%{background-position:-200% 0}}
       `}</style>
 
       <div className="dash-page">
@@ -250,8 +268,7 @@ export default function ArtistDashboard() {
             )}
             <Link to={`/artist/${artistProfile?._id}`}
               style={{ ...S.btnOut, fontSize:'.74rem', padding:'9px 14px' }} className="dash-btn-o">
-              <Eye size={13}/> <span style={{ display:'none' }} className="show-sm">View Profile</span>
-              <span className="hide-sm">Profile</span>
+              <Eye size={13}/> Profile
             </Link>
           </div>
         </div>
@@ -260,10 +277,10 @@ export default function ArtistDashboard() {
         {stats && (
           <div className="stats-grid" style={{ marginBottom:28 }}>
             {[
-              { icon:Package,    label:'Products', value: stats.totalProducts },
-              { icon:ShoppingBag,label:'Sales',    value: stats.totalSales },
-              { icon:TrendingUp, label:'Revenue',  value: `₹${(stats.totalRevenue||0).toLocaleString()}` },
-              { icon:Star,       label:'Rating',   value: stats.averageRating > 0 ? `${Number(stats.averageRating).toFixed(1)}★` : '—' },
+              { icon:Package,     label:'Products', value:stats.totalProducts },
+              { icon:ShoppingBag, label:'Sales',    value:stats.totalSales },
+              { icon:TrendingUp,  label:'Revenue',  value:`₹${(stats.totalRevenue||0).toLocaleString()}` },
+              { icon:Star,        label:'Rating',   value:stats.averageRating>0?`${Number(stats.averageRating).toFixed(1)}★`:'—' },
             ].map(({ icon:Icon, label, value }) => (
               <div key={label} style={S.card}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
@@ -281,11 +298,12 @@ export default function ArtistDashboard() {
         {/* Tabs */}
         <div style={{ display:'flex', gap:20, borderBottom:'1px solid #E8DDD4', marginBottom:28, overflowX:'auto' }}>
           {[
-            { id:'overview', label:'Overview', icon:TrendingUp },
-            { id:'products', label:'Products',  icon:Package },
-            { id:'orders',   label:'Orders',    icon:ShoppingBag },
+            { id:'overview', label:'Overview',     icon:TrendingUp  },
+            { id:'products', label:'Products',     icon:Package     },
+            { id:'orders',   label:'Orders',       icon:ShoppingBag },
+            { id:'profile',  label:'Edit Profile', icon:UserCircle  },
           ].map(({ id, label, icon:Icon }) => (
-            <button key={id} onClick={()=>setActiveTab(id)} className={`dash-tab ${activeTab===id?'active':''}`}>
+            <button key={id} onClick={() => setActiveTab(id)} className={`dash-tab ${activeTab===id?'active':''}`}>
               <Icon size={14}/> {label}
               {id==='orders' && newOrderCount > 0 && (
                 <span style={{ background:'#ef4444', color:'white', fontSize:'.6rem', padding:'1px 6px', borderRadius:99, fontWeight:700 }}>
@@ -301,7 +319,7 @@ export default function ArtistDashboard() {
           <div className="overview-grid">
             <div style={S.card}>
               <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', fontWeight:600, marginBottom:16 }}>Recent Orders</p>
-              {orders.length === 0 && <p style={{ fontSize:'.85rem', color:'var(--stone)' }}>No orders yet</p>}
+              {orders.length===0 && <p style={{ fontSize:'.85rem', color:'var(--stone)' }}>No orders yet</p>}
               {orders.slice(0,5).map(o => (
                 <div key={o._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #F0E8E0', gap:8 }}>
                   <div style={{ minWidth:0 }}>
@@ -315,16 +333,15 @@ export default function ArtistDashboard() {
                 </div>
               ))}
             </div>
-
             <div style={S.card}>
               <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', fontWeight:600, marginBottom:16 }}>Stock Alerts</p>
-              {products.filter(p=>p.stock<=3).length === 0
+              {products.filter(p=>p.stock<=3).length===0
                 ? <p style={{ fontSize:'.85rem', color:'var(--stone)' }}>All products well stocked ✓</p>
                 : products.filter(p=>p.stock<=3).map(p => (
                   <div key={p._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #F0E8E0', gap:8 }}>
                     <p style={{ fontSize:'.85rem', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</p>
                     <span style={{ fontSize:'.72rem', padding:'2px 8px', flexShrink:0, background:p.stock===0?'#FFEBEB':'#FFF8EB', color:p.stock===0?'#B91C1C':'#B45309' }}>
-                      {p.stock===0 ? 'Out of stock' : `${p.stock} left`}
+                      {p.stock===0?'Out of stock':`${p.stock} left`}
                     </span>
                   </div>
                 ))
@@ -337,15 +354,12 @@ export default function ArtistDashboard() {
         {activeTab === 'products' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, gap:12 }}>
-              <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600 }}>
-                Products ({products.length})
-              </h2>
+              <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600 }}>Products ({products.length})</h2>
               <button onClick={() => { resetForm(); setShowForm(true); }} style={S.btnPrim} className="dash-btn-p">
-                <Plus size={14}/> <span>Add</span>
+                <Plus size={14}/> Add
               </button>
             </div>
 
-            {/* Product Form */}
             {showForm && (
               <div style={{ ...S.card, marginBottom:24, padding:'20px 16px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
@@ -356,7 +370,6 @@ export default function ArtistDashboard() {
                     <X size={18}/>
                   </button>
                 </div>
-
                 <form onSubmit={handleSubmit}>
                   <div className="form-grid-2" style={{ marginBottom:14 }}>
                     <div>
@@ -390,8 +403,6 @@ export default function ArtistDashboard() {
                       <input className="dash-input" style={S.input} placeholder="handmade, pottery, blue" value={form.tags} onChange={e=>setForm({...form,tags:e.target.value})}/>
                     </div>
                   </div>
-
-                  {/* Specs */}
                   <div style={{ borderTop:'1px solid #E8DDD4', paddingTop:16, marginBottom:20 }}>
                     <p style={{ ...S.label, marginBottom:12 }}>Specifications</p>
                     <div className="specs-grid">
@@ -410,11 +421,9 @@ export default function ArtistDashboard() {
                       <span style={{ fontSize:'.85rem', color:'var(--stone)' }}>Available for customization</span>
                     </label>
                   </div>
-
-                  {/* Images */}
                   <div style={{ borderTop:'1px solid #E8DDD4', paddingTop:16, marginBottom:20 }}>
                     <p style={{ ...S.label, marginBottom:12 }}>Product Images *</p>
-                    {editingId && form.existingImages.length > 0 && form.imageFiles.length === 0 && (
+                    {editingId && form.existingImages.length>0 && form.imageFiles.length===0 && (
                       <div style={{ marginBottom:12 }}>
                         <p style={{ fontSize:'.75rem', color:'var(--stone)', marginBottom:8 }}>Current images:</p>
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:12 }}>
@@ -426,14 +435,13 @@ export default function ArtistDashboard() {
                         </div>
                       </div>
                     )}
-                    <ImageUploadZone images={form.imageFiles} onChange={files => setForm({...form, imageFiles: files})}/>
+                    <ImageUploadZone images={form.imageFiles} onChange={files=>setForm({...form,imageFiles:files})}/>
                   </div>
-
                   <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                     <button type="submit" disabled={submitting} style={{ ...S.btnPrim, opacity:submitting?.6:1 }} className="dash-btn-p">
                       {submitting
                         ? <><span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block', animation:'spin .7s linear infinite' }}/> {editingId?'Saving…':'Listing…'}</>
-                        : editingId ? 'Update Product' : 'List Product'}
+                        : editingId?'Update Product':'List Product'}
                     </button>
                     <button type="button" onClick={resetForm} style={S.btnOut} className="dash-btn-o">Cancel</button>
                   </div>
@@ -441,8 +449,7 @@ export default function ArtistDashboard() {
               </div>
             )}
 
-            {/* Products Grid */}
-            {products.length === 0 ? (
+            {products.length===0 ? (
               <div style={{ textAlign:'center', padding:'48px 24px', background:'var(--parch)', border:'1px solid #E8DDD4' }}>
                 <Package size={36} style={{ color:'#D5CAC0', margin:'0 auto 12px' }}/>
                 <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', color:'var(--stone)', marginBottom:16 }}>No products yet</p>
@@ -455,8 +462,7 @@ export default function ArtistDashboard() {
                 {products.map(p => (
                   <div key={p._id} className="prod-card">
                     <div style={{ height:150, background:'var(--parch)', overflow:'hidden' }}>
-                      <img src={p.images?.[0] || 'https://placehold.co/400x300/F7F0E6/8C7B6B?text=No+Image'}
-                        alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                      <img src={p.images?.[0]||'https://placehold.co/400x300/F7F0E6/8C7B6B?text=No+Image'} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                     </div>
                     <div style={{ padding:14 }}>
                       <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:'.88rem', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</p>
@@ -489,7 +495,7 @@ export default function ArtistDashboard() {
             <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600, marginBottom:20 }}>
               Orders ({orders.length})
             </h2>
-            {orders.length === 0 ? (
+            {orders.length===0 ? (
               <div style={{ textAlign:'center', padding:'48px 24px', background:'var(--parch)', border:'1px solid #E8DDD4' }}>
                 <ShoppingBag size={36} style={{ color:'#D5CAC0', margin:'0 auto 12px' }}/>
                 <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', color:'var(--stone)' }}>No orders yet</p>
@@ -512,12 +518,10 @@ export default function ArtistDashboard() {
                         </select>
                       </div>
                     </div>
-
                     <div style={{ borderTop:'1px solid #F0E8E0', paddingTop:12 }}>
                       {o.items?.map((item,i) => (
                         <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                          <img src={item.image||'https://placehold.co/40/F7F0E6/8C7B6B?text=P'} alt=""
-                            style={{ width:40, height:40, objectFit:'cover', flexShrink:0 }}/>
+                          <img src={item.image||'https://placehold.co/40/F7F0E6/8C7B6B?text=P'} alt="" style={{ width:40, height:40, objectFit:'cover', flexShrink:0 }}/>
                           <div style={{ minWidth:0 }}>
                             <p style={{ fontSize:'.85rem', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.name}</p>
                             <p style={{ fontSize:'.75rem', color:'var(--stone)' }}>Qty: {item.quantity} × ₹{item.price?.toLocaleString()}</p>
@@ -525,7 +529,6 @@ export default function ArtistDashboard() {
                         </div>
                       ))}
                     </div>
-
                     <div style={{ borderTop:'1px solid #F0E8E0', paddingTop:10, marginTop:4 }}>
                       <p style={{ fontSize:'.75rem', color:'var(--stone)' }}>
                         📦 {o.shippingAddress?.name}, {o.shippingAddress?.city}, {o.shippingAddress?.state}
@@ -538,6 +541,82 @@ export default function ArtistDashboard() {
             )}
           </div>
         )}
+
+        {/* ── EDIT PROFILE ── */}
+        {activeTab === 'profile' && (
+          <div style={{ maxWidth:560 }}>
+            <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600, marginBottom:24 }}>
+              Edit Profile
+            </h2>
+
+            {/* Cover preview */}
+            <div style={{ position:'relative', height:140, background:'var(--parch)', overflow:'hidden', marginBottom:20 }}>
+              {coverPreview && <img src={coverPreview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+              <label style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:'rgba(26,18,8,.25)', transition:'background .2s' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(26,18,8,.4)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(26,18,8,.25)'}>
+                <div style={{ textAlign:'center', color:'white' }}>
+                  <ImagePlus size={22} style={{ margin:'0 auto 4px' }}/>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', fontWeight:600, letterSpacing:'.1em', textTransform:'uppercase' }}>
+                    {coverPreview ? 'Change Cover' : 'Upload Cover'}
+                  </span>
+                </div>
+                <input type="file" accept="image/*" style={{ display:'none' }}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (file) { setCoverFile(file); setCoverPreview(URL.createObjectURL(file)); }
+                  }}/>
+              </label>
+            </div>
+
+            <form onSubmit={handleProfileSave} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <div>
+                <label style={S.label}>Brand Name *</label>
+                <input className="dash-input" style={S.input} value={profileForm.brandName}
+                  onChange={e => setProfileForm({...profileForm, brandName:e.target.value})} required/>
+              </div>
+              <div>
+                <label style={S.label}>Bio</label>
+                <textarea className="dash-input" style={{ ...S.input, minHeight:90, resize:'vertical' }}
+                  value={profileForm.bio}
+                  onChange={e => setProfileForm({...profileForm, bio:e.target.value})}
+                  placeholder="Tell your story..."/>
+              </div>
+              <div className="prof-grid">
+                <div>
+                  <label style={S.label}>Location</label>
+                  <input className="dash-input" style={S.input} value={profileForm.location}
+                    onChange={e => setProfileForm({...profileForm, location:e.target.value})}
+                    placeholder="e.g. Jaipur, India"/>
+                </div>
+                <div>
+                  <label style={S.label}>Specialty</label>
+                  <input className="dash-input" style={S.input} value={profileForm.specialty}
+                    onChange={e => setProfileForm({...profileForm, specialty:e.target.value})}
+                    placeholder="e.g. Pottery, Jewelry"/>
+                </div>
+              </div>
+              <div style={{ borderTop:'1px solid #E8DDD4', paddingTop:16 }}>
+                <p style={{ ...S.label, marginBottom:12 }}>Social Links</p>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <input className="dash-input" style={S.input} value={profileForm.instagram}
+                    onChange={e => setProfileForm({...profileForm, instagram:e.target.value})}
+                    placeholder="Instagram URL (https://instagram.com/...)"/>
+                  <input className="dash-input" style={S.input} value={profileForm.website}
+                    onChange={e => setProfileForm({...profileForm, website:e.target.value})}
+                    placeholder="Website URL (https://...)"/>
+                </div>
+              </div>
+              <button type="submit" disabled={profileSaving}
+                style={{ ...S.btnPrim, justifyContent:'center', opacity:profileSaving?0.6:1 }} className="dash-btn-p">
+                {profileSaving
+                  ? <><span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'white', borderRadius:'50%', display:'inline-block', animation:'spin .7s linear infinite' }}/> Saving…</>
+                  : 'Save Profile'}
+              </button>
+            </form>
+          </div>
+        )}
+
       </div>
     </>
   );
