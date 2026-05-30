@@ -21,7 +21,19 @@ import Wishlist        from './pages/Wishlist';
 import Profile         from './pages/Profile';
 import About           from './pages/About';
 import ChatPage        from './pages/Chat';
-import AdminDashboard  from './pages/AdminDashboard';  
+import AdminDashboard  from './pages/AdminDashboard';
+
+// GA4 route tracking — har page change pe event fire hoga
+function GA4RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    if (typeof window.gtag !== 'function') return;
+    window.gtag('config', 'G-BET7WZSEDS', {
+      page_path: location.pathname + location.search,
+    });
+  }, [location]);
+  return null;
+}
 
 function Spinner() {
   return (
@@ -129,6 +141,7 @@ export default function App() {
             .animate-marquee:hover{animation-play-state:paused}
           `}</style>
 
+          <GA4RouteTracker />
           <RouteProgressBar />
           <ScrollReset />
 
@@ -144,7 +157,7 @@ export default function App() {
               <Route path="/artist/:id"  element={<Layout><ArtistProfile /></Layout>} />
               <Route path="/about"       element={<Layout><About /></Layout>} />
 
-              {/* ✅ Admin — no Navbar/Footer, no auth required (self-protected via key) */}
+              {/* Admin */}
               <Route path="/admin" element={<AdminDashboard />} />
 
               {/* Checkout */}
@@ -161,7 +174,7 @@ export default function App() {
                 <ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>
               }/>
 
-              {/* Chat — buyers only */}
+              {/* Chat */}
               <Route path="/chat/:artistId" element={
                 <ProtectedRoute><Layout hideFooter><ChatPage /></Layout></ProtectedRoute>
               }/>
