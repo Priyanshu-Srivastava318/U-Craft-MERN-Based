@@ -4,6 +4,7 @@ import { Heart, ShoppingBag, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { productPath } from '../utils/seo';
 import api from '../utils/api'; // ✅ api.js use karo, axios nahi — token auto-attach hoga
 
 export default function ProductCard({ product, wishlistedIds = [] }) {
@@ -55,7 +56,7 @@ export default function ProductCard({ product, wishlistedIds = [] }) {
     : 0;
 
   return (
-    <Link to={`/product/${product._id}`} className="group block">
+    <Link to={productPath(product)} className="group block">
       <div className="card overflow-hidden">
         {/* Image */}
         <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">

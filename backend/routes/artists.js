@@ -15,6 +15,11 @@ function runCoverUpload(req, res) {
   });
 }
 
+function idFromSlug(value = '') {
+  const match = String(value).match(/[a-f0-9]{24}$/i);
+  return match ? match[0] : value;
+}
+
 // Get all artists
 router.get('/', async (req, res) => {
   try {
@@ -105,7 +110,7 @@ router.get('/user/:userId', async (req, res) => {
 // Get artist profile by ID
 router.get('/:id', async (req, res) => {
   try {
-    const artist = await Artist.findById(req.params.id).populate('user', 'name avatar email');
+    const artist = await Artist.findById(idFromSlug(req.params.id)).populate('user', 'name avatar email');
     if (!artist) return res.status(404).json({ message: 'Artist not found' });
 
     const products = await Product.find({ artist: artist._id, isActive: true });

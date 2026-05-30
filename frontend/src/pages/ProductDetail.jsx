@@ -5,6 +5,7 @@ import api from '../utils/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { JsonLd, SEO, absoluteUrl, artistPath, idFromSlug, productPath } from '../utils/seo';
 
 function Stars({ rating, onRate, readonly, size = 18 }) {
   const [hovered, setHovered] = useState(0);
@@ -25,6 +26,7 @@ function Stars({ rating, onRate, readonly, size = 18 }) {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const apiId = idFromSlug(id);
   const navigate = useNavigate();
 
   const [product,         setProduct]         = useState(null);
@@ -43,7 +45,7 @@ export default function ProductDetail() {
 
   const { addToCart, isInCart, setCartOpen } = useCart();
   const { user } = useAuth();
-  const inCart = isInCart(id);
+  const inCart = isInCart(apiId);
 
   useEffect(() => { fetchProduct(); fetchSimilar(); }, [id]);
 
@@ -53,7 +55,7 @@ export default function ProductDetail() {
     api.get('/users/wishlist')
       .then(({ data }) => {
         const ids = Array.isArray(data) ? data.map(p => String(p._id)) : [];
-        setWishlisted(ids.includes(String(id)));
+        setWishlisted(ids.includes(String(apiId)));
       })
       .catch(() => {})
       .finally(() => setWishlistChecked(true));
@@ -63,8 +65,8 @@ export default function ProductDetail() {
     setLoading(true);
     try {
       const [pRes, rRes] = await Promise.all([
-        api.get(`/products/${id}`),
-        api.get(`/reviews/product/${id}`).catch(() => ({ data:[] }))
+        api.get(`/products/${apiId}`),
+        api.get(`/reviews/product/${apiId}`).catch(() => ({ data:[] }))
       ]);
       setProduct(pRes.data);
       setReviews(Array.isArray(rRes.data) ? rRes.data : []);
@@ -74,7 +76,7 @@ export default function ProductDetail() {
 
   const fetchSimilar = async () => {
     try {
-      const { data } = await api.get(`/products/${id}/similar`);
+      const { data } = await api.get(`/products/${apiId}/similar`);
       setSimilarProducts(data);
     } catch {}
   };
@@ -89,7 +91,7 @@ export default function ProductDetail() {
   };
 
   const handleBuyNow = async () => {
-    if (!user) { toast.error('Please login'); navigate('/login', { state:{ from:{ pathname:`/product/${id}` } } }); return; }
+    if (!user) { toast.error('Please login'); navigate('/login', { state:{ from:{ pathname: product ? productPath(product) : `/product/${id}` } } }); return; }
     if (user.role === 'artist') { toast.error('Artists cannot purchase'); return; }
     setBuyingNow(true);
     try {
@@ -105,11 +107,11 @@ export default function ProductDetail() {
     setWishlistLoading(true);
     try {
       if (wishlisted) {
-        await api.delete(`/users/wishlist/${id}`);
+        await api.delete(`/users/wishlist/${apiId}`);
         setWishlisted(false);
         toast.success('Removed from wishlist');
       } else {
-        await api.post(`/users/wishlist/${id}`);
+        await api.post(`/users/wishlist/${apiId}`);
         setWishlisted(true);
         toast.success('Added to wishlist ♡');
       }
@@ -122,7 +124,7 @@ export default function ProductDetail() {
     setSubmitting(true);
     try {
       await api.post('/reviews', {
-        productId: id,
+        productId: apiId,
         artistId: product.artist?._id,
         rating: reviewForm.rating,
         comment: reviewForm.comment
@@ -184,9 +186,48 @@ export default function ProductDetail() {
   );
 
   const isCustomizable = product.specifications?.customizable === true || product.specifications?.customizable === 'true';
+  const currentProductPath = productPath(product);
+  const currentArtistPath = artistPath(product.artist);
+  const productImage = product.images?.[0];
+  const productDescription = product.description || `Buy ${product.name} handmade by ${product.artist?.brandName || 'a U-Craft artisan'}.`;
+  const productSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: productDescription,
+    image: product.images || [],
+    category: product.category,
+    sku: product._id,
+    brand: {
+      '@type': 'Brand',
+      name: product.artist?.brandName || 'U-Craft'
+    },
+    offers: {
+      '@type': 'Offer',
+      url: absoluteUrl(currentProductPath),
+      priceCurrency: 'INR',
+      price: product.price,
+      availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+    },
+    ...(product.averageRating > 0 ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: Number(product.averageRating).toFixed(1),
+        reviewCount: product.totalReviews || reviews.length || 1
+      }
+    } : {})
+  };
 
   return (
     <div className="page-enter" style={{ maxWidth:1280, margin:'0 auto', padding:'40px 24px' }}>
+      <SEO
+        title={`${product.name} - Handmade ${product.category}`}
+        description={productDescription}
+        path={currentProductPath}
+        image={productImage}
+        type="product"
+      />
+      <JsonLd data={productSchema} />
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:48, marginBottom:64 }}>
 
@@ -220,7 +261,7 @@ export default function ProductDetail() {
 
         {/* Info */}
         <div>
-          <Link to={`/artist/${product.artist?._id}`} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B', textDecoration:'none' }}>
+          <Link to={currentArtistPath} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B', textDecoration:'none' }}>
             {product.artist?.brandName}
           </Link>
 
@@ -339,7 +380,7 @@ export default function ProductDetail() {
           )}
 
           {/* Artist card */}
-          <Link to={`/artist/${product.artist?._id}`}
+          <Link to={currentArtistPath}
             style={{ display:'flex', alignItems:'center', gap:12, padding:16, border:'1px solid #EDE3D5', marginTop:32, textDecoration:'none', transition:'border-color 0.2s' }}
             onMouseEnter={e => e.currentTarget.style.borderColor='#C4622D'}
             onMouseLeave={e => e.currentTarget.style.borderColor='#EDE3D5'}>
@@ -413,7 +454,7 @@ export default function ProductDetail() {
           </h2>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:24 }}>
             {similarProducts.map(p => (
-              <Link to={`/product/${p._id}`} key={p._id}
+              <Link to={productPath(p)} key={p._id}
                 style={{ textDecoration:'none', color:'inherit', border:'1px solid #EDE3D5', transition:'border-color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor='#C4622D'}
                 onMouseLeave={e => e.currentTarget.style.borderColor='#EDE3D5'}>

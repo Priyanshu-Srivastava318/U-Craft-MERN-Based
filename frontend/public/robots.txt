@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /checkout
+Disallow: /orders
+Disallow: /wishlist
+Disallow: /profile
+Disallow: /chat
+
+Sitemap: https://www.u-craft.in/sitemap.xml

@@ -7,6 +7,7 @@ import { SlidersHorizontal, Search, X } from 'lucide-react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
+import { SEO } from '../utils/seo';
 
 const CATEGORIES = ['All', 'Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'];
 const SORTS = [
@@ -89,6 +90,12 @@ export default function Shop() {
   };
 
   return (
+    <>
+    <SEO
+      title="Shop Handmade Gifts"
+      description="Explore handmade and personalized gifts from U-Craft artisans, including paintings, pottery, jewelry, textiles, woodwork, and custom craft products."
+      path="/shop"
+    />
     <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <p className="label-sm mb-2">Explore</p>
@@ -175,5 +182,6 @@ export default function Shop() {
         </div>
       )}
     </div>
+    </>
   );
 }

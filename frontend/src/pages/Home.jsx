@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
+import { JsonLd, SEO, SITE_URL } from '../utils/seo';
 
 if (!document.getElementById('ucraft-fonts')) {
   const link = document.createElement('link');
@@ -68,7 +69,7 @@ export default function Home() {
   const { user, isArtist } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [stats, setStats]       = useState({ artists: 0, products: 0, categories: 0 });
+  const [stats, setStats]       = useState({ artists: 9, products: 12, categories: 4 });
 
   const missionRef = useReveal();
   const productRef = useReveal();
@@ -81,12 +82,32 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     api.get('/stats')
-      .then(({ data }) => setStats(data))
+      .then(({ data }) => {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          setStats(prev => ({ ...prev, ...data }));
+        }
+      })
       .catch(() => {});
   }, []);
 
   return (
     <>
+      <SEO
+        title="U-Craft - Buy Handmade & Personalized Gifts from Indian Artisans"
+        description="Shop handmade portraits, explosion boxes, pottery, jewelry, textiles, and custom gifts directly from verified Indian artisans."
+        path="/"
+      />
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'U-Craft',
+        url: SITE_URL,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${SITE_URL}/shop?search={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      }} />
       <style>{`
         :root{--ink:#1A1208;--clay:#C4622D;--clay-lt:#D97B4A;--parch:#F7F0E6;--parch-dk:#EDE3D5;--stone:#8C7B6B;--cream:#FDFAF5;}
         .ucd{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;line-height:1.05;letter-spacing:-0.01em;}
@@ -171,7 +192,7 @@ export default function Home() {
                       borderRight:  i<2 ? '1px solid #D5CAC0' : 'none',
                     }}>
                       <p className="ucd" style={{ fontSize:'2rem', color:'var(--ink)', marginBottom:2 }}>
-                        <Counter end={s.n} suffix={s.sfx}/>
+                        <span>{s.n}{s.sfx}</span>
                       </p>
                       <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'var(--stone)', fontWeight:500 }}>{s.label}</p>
                     </div>

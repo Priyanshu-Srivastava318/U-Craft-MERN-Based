@@ -63,6 +63,35 @@ app.set('io', io);
 const Artist  = require('./models/Artist');
 const Product = require('./models/Product');
 
+const SITE_URL = 'https://www.u-craft.in';
+
+function slugify(value = '') {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function productPath(product) {
+  return `/product/${slugify(product.name) || 'handmade-product'}-${product._id}`;
+}
+
+function artistPath(artist) {
+  return `/artist/${slugify(artist.brandName) || 'artisan'}-${artist._id}`;
+}
+
+function xmlEscape(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 app.get('/api/stats', async (req, res) => {
   try {
     const [artists, products, categoryData] = await Promise.all([
@@ -73,6 +102,51 @@ app.get('/api/stats', async (req, res) => {
     res.json({ artists, products, categories: categoryData.length });
   } catch (err) {
     res.status(500).json({ artists: 0, products: 0, categories: 0 });
+  }
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const [products, artists] = await Promise.all([
+      Product.find({ isActive: true }).select('name updatedAt createdAt').sort({ createdAt: -1 }).limit(5000),
+      Artist.find().select('brandName updatedAt createdAt').sort({ createdAt: -1 }).limit(5000),
+    ]);
+
+    const staticUrls = [
+      { loc: '/', priority: '1.0', changefreq: 'daily' },
+      { loc: '/shop', priority: '0.9', changefreq: 'daily' },
+      { loc: '/artists', priority: '0.8', changefreq: 'weekly' },
+      { loc: '/about', priority: '0.6', changefreq: 'monthly' },
+    ];
+
+    const urls = [
+      ...staticUrls,
+      ...products.map(product => ({
+        loc: productPath(product),
+        priority: '0.8',
+        changefreq: 'weekly',
+        lastmod: product.updatedAt || product.createdAt,
+      })),
+      ...artists.map(artist => ({
+        loc: artistPath(artist),
+        priority: '0.7',
+        changefreq: 'weekly',
+        lastmod: artist.updatedAt || artist.createdAt,
+      })),
+    ];
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.map(({ loc, priority, changefreq, lastmod }) => {
+        const lastmodTag = lastmod ? `\n    <lastmod>${new Date(lastmod).toISOString().slice(0, 10)}</lastmod>` : '';
+        return `  <url>\n    <loc>${xmlEscape(`${SITE_URL}${loc}`)}</loc>${lastmodTag}\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+      }).join('\n') +
+      `\n</urlset>`;
+
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (err) {
+    res.status(500).send('Unable to generate sitemap');
   }
 });
 

@@ -1,14 +1,21 @@
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createRoot, hydrateRoot } from 'react-dom/client'
+import { HelmetProvider } from 'react-helmet-async'
 import App from './App.jsx'
 import './index.css'
 
-// ❌ REMOVED: axios.defaults.baseURL — this was conflicting with api.js
-// api.js (utils/api.js) handles all baseURL logic correctly
-// Using both caused double /api/api/ on deployed version
-
-ReactDOM.createRoot(document.getElementById('root')).render(
+// api.js handles baseURL logic so deployed builds do not double-prefix /api.
+const root = document.getElementById('root');
+const app = (
   <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </React.StrictMode>
+);
+
+if (root.hasChildNodes()) {
+  hydrateRoot(root, app);
+} else {
+  createRoot(root).render(app);
+}

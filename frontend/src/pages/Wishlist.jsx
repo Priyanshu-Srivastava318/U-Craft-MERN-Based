@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { productPath } from '../utils/seo';
 
 export default function Wishlist() {
   const [items, setItems] = useState([]);
@@ -71,7 +72,7 @@ export default function Wishlist() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {items.map(product => (
             <div key={product._id} className="group relative bg-white border border-stone-200 hover:border-stone-300 transition-all">
-              <Link to={`/product/${product._id}`}>
+              <Link to={productPath(product)}>
                 <div className="aspect-[3/4] overflow-hidden bg-stone-100">
                   <img
                     src={product.images?.[0] || 'https://placehold.co/300x400/f5ede0/8a6340?text=Craft'}
@@ -98,7 +99,7 @@ export default function Wishlist() {
               {/* Quick add to cart / buy now at bottom */}
               <div className="px-3 pb-3">
                 <Link
-                  to={`/product/${product._id}`}
+                  to={productPath(product)}
                   className="block w-full text-center font-body text-xs font-semibold uppercase tracking-wider py-2 bg-ink-900 text-white hover:bg-craft-500 transition-colors"
                   style={{background:'#1A1208',color:'white',textDecoration:'none'}}
                   onMouseEnter={e=>e.currentTarget.style.background='#C4622D'}

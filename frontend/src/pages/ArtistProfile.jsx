@@ -6,9 +6,11 @@ import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { JsonLd, SEO, absoluteUrl, artistPath, idFromSlug } from '../utils/seo';
 
 export default function ArtistProfile() {
   const { id }     = useParams();
+  const apiId = idFromSlug(id);
   const { user, artistProfile } = useAuth();
   const navigate   = useNavigate();
 
@@ -24,11 +26,11 @@ export default function ArtistProfile() {
     brandName:'', bio:'', location:'', specialty:'', instagram:'', website:'',
   });
 
-  const isOwner = user?.role === 'artist' && String(artistProfile?._id) === String(id);
+  const isOwner = user?.role === 'artist' && String(artistProfile?._id) === String(apiId);
 
   const loadData = () => {
     setLoading(true);
-    api.get(`/artists/${id}`)
+    api.get(`/artists/${apiId}`)
       .then(({ data }) => {
         setData(data);
         setEditForm({
@@ -104,6 +106,25 @@ export default function ArtistProfile() {
   if (!data) return <div className="text-center py-20 font-display text-2xl">Artist not found</div>;
 
   const { artist, products = [], reviews = [] } = data;
+  const currentArtistPath = artistPath(artist);
+  const artistDescription = artist.bio || `Discover handmade ${artist.specialty || 'craft'} products by ${artist.brandName} on U-Craft.`;
+  const artistSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: artist.user?.name || artist.brandName,
+    alternateName: artist.brandName,
+    description: artistDescription,
+    url: absoluteUrl(currentArtistPath),
+    image: artist.coverImage || undefined,
+    address: artist.location ? {
+      '@type': 'PostalAddress',
+      addressLocality: artist.location
+    } : undefined,
+    sameAs: [
+      artist.socialLinks?.instagram,
+      artist.socialLinks?.website
+    ].filter(Boolean)
+  };
 
   const ratingBreakdown = [5,4,3,2,1].map(n => ({
     star: n,
@@ -113,6 +134,13 @@ export default function ArtistProfile() {
 
   return (
     <div className="page-enter">
+      <SEO
+        title={`${artist.brandName} - Handmade ${artist.specialty || 'Craft'} Artist`}
+        description={artistDescription}
+        path={currentArtistPath}
+        image={artist.coverImage}
+      />
+      <JsonLd data={artistSchema} />
 
       {/* Cover */}
       <div className="h-56 sm:h-72 bg-gradient-to-br from-craft-200 to-stone-300 relative overflow-hidden">

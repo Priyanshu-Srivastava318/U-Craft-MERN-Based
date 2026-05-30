@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Heart, Globe, Star, Users } from 'lucide-react';
+import { SEO } from '../utils/seo';
 
 const values = [
   { icon: Heart, title: 'Fair to Artisans', desc: 'We ensure every artisan receives fair compensation for their labor and talent, far above market rates.' },
@@ -11,6 +12,11 @@ const values = [
 export default function About() {
   return (
     <div className="page-enter">
+      <SEO
+        title="About U-Craft"
+        description="Learn how U-Craft connects buyers with Indian artisans through fair, authentic, personalized handmade gifting."
+        path="/about"
+      />
       {/* Hero */}
       <section className="bg-ink-900 py-24 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10"

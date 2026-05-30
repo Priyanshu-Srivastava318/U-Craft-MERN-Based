@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Package } from 'lucide-react';
 import api from '../utils/api';
+import { SEO, artistPath } from '../utils/seo';
 
 export default function Artists() {
   const [artists, setArtists] = useState([]);
@@ -15,6 +16,12 @@ export default function Artists() {
   }, []);
 
   return (
+    <>
+    <SEO
+      title="Meet Indian Artisans"
+      description="Meet verified U-Craft artisans and discover handmade gifts, personalized products, and traditional craft stories from across India and South Asia."
+      path="/artists"
+    />
     <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-12">
         <p className="label-sm mb-3">The Creators</p>
@@ -36,7 +43,7 @@ export default function Artists() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {artists.map(artist => (
-            <Link key={artist._id} to={`/artist/${artist._id}`} className="group card overflow-hidden">
+            <Link key={artist._id} to={artistPath(artist)} className="group card overflow-hidden">
               <div className="h-40 bg-gradient-to-br from-craft-100 to-stone-200 overflow-hidden relative">
                 {artist.coverImage ? (
                   <img src={artist.coverImage} alt={artist.brandName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -71,5 +78,6 @@ export default function Artists() {
         </div>
       )}
     </div>
+    </>
   );
 }

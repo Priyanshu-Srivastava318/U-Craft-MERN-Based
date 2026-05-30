@@ -14,6 +14,11 @@ function runUpload(req, res) {
   });
 }
 
+function idFromSlug(value = '') {
+  const match = String(value).match(/[a-f0-9]{24}$/i);
+  return match ? match[0] : value;
+}
+
 // GET /api/products/artist/my-products
 router.get('/artist/my-products', protect, artistOnly, async (req, res) => {
   try {
@@ -29,11 +34,12 @@ router.get('/artist/my-products', protect, artistOnly, async (req, res) => {
 // GET /api/products/:id/similar
 router.get('/:id/similar', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const productId = idFromSlug(req.params.id);
+    const product = await Product.findById(productId);
     if (!product) return res.status(404).json([]);
 
     const similar = await Product.find({
-      _id: { $ne: req.params.id },
+      _id: { $ne: productId },
       category: product.category,
       isActive: true,
     })
@@ -84,7 +90,7 @@ router.get('/', async (req, res) => {
 // GET /api/products/:id
 router.get('/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findById(idFromSlug(req.params.id))
       .populate('artist', 'brandName coverImage bio averageRating totalReviews user location specialty');
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);

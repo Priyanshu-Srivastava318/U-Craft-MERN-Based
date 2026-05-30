@@ -4,6 +4,7 @@ import { ShoppingBag, Package, RefreshCw, X, AlertCircle } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { productPath } from '../utils/seo';
 
 const STATUS_COLORS = {
   placed:     { bg:'#EFF6FF', text:'#1D4ED8' },
@@ -327,7 +328,7 @@ export default function MyOrders() {
                     <div key={i} className="flex items-center gap-3">
                       <img src={item.image || 'https://placehold.co/60x60/f5ede0/8a6340?text=P'} alt={item.name} className="w-12 h-12 object-cover flex-shrink-0"/>
                       <div className="flex-1 min-w-0">
-                        <Link to={`/product/${item.product?._id||item.product}`} className="font-body text-sm hover:text-craft-600 transition-colors line-clamp-1">
+                        <Link to={item.product?._id ? productPath(item.product) : `/product/${item.product}`} className="font-body text-sm hover:text-craft-600 transition-colors line-clamp-1">
                           {item.name}
                         </Link>
                         <p className="font-body text-xs text-stone-500">Qty: {item.quantity} · ₹{item.price?.toLocaleString()} each</p>

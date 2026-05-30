@@ -7,6 +7,7 @@ import {
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { artistPath } from '../utils/seo';
 
 const STATUS_COLORS = {
   placed:     { bg:'#EBF5FF', text:'#1D6FA4' },
@@ -266,7 +267,7 @@ export default function ArtistDashboard() {
                 </span>
               </div>
             )}
-            <Link to={`/artist/${artistProfile?._id}`}
+            <Link to={artistPath(artistProfile)}
               style={{ ...S.btnOut, fontSize:'.74rem', padding:'9px 14px' }} className="dash-btn-o">
               <Eye size={13}/> Profile
             </Link>
