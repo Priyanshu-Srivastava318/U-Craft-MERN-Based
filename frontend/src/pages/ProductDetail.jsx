@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { JsonLd, SEO, absoluteUrl, artistPath, idFromSlug, productPath } from '../utils/seo';
 
+const FREE_SHIPPING_THRESHOLD = 999; // ✅ config constant — easy to change later
+
 function Stars({ rating, onRate, readonly, size = 18 }) {
   const [hovered, setHovered] = useState(0);
   return (
@@ -43,7 +45,8 @@ export default function ProductDetail() {
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistChecked, setWishlistChecked] = useState(false);
 
-  const { addToCart, isInCart, setCartOpen } = useCart();
+  // ✅ refreshWishlist added
+  const { addToCart, isInCart, setCartOpen, refreshWishlist } = useCart();
   const { user } = useAuth();
   const inCart = isInCart(apiId);
 
@@ -70,15 +73,21 @@ export default function ProductDetail() {
       ]);
       setProduct(pRes.data);
       setReviews(Array.isArray(rRes.data) ? rRes.data : []);
-    } catch { toast.error('Product not found'); }
-    finally { setLoading(false); }
+    } catch {
+      toast.error('Product not found');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ✅ Fix: array guard + error reset
   const fetchSimilar = async () => {
     try {
       const { data } = await api.get(`/products/${apiId}/similar`);
-      setSimilarProducts(data);
-    } catch {}
+      setSimilarProducts(Array.isArray(data) ? data : []);
+    } catch {
+      setSimilarProducts([]);
+    }
   };
 
   const handleAddToCart = async () => {
@@ -97,8 +106,11 @@ export default function ProductDetail() {
     try {
       if (!inCart) await addToCart(product._id, qty);
       navigate('/checkout');
-    } catch { toast.error('Something went wrong'); }
-    finally { setBuyingNow(false); }
+    } catch {
+      toast.error('Something went wrong');
+    } finally {
+      setBuyingNow(false);
+    }
   };
 
   const handleWishlist = async () => {
@@ -109,18 +121,25 @@ export default function ProductDetail() {
       if (wishlisted) {
         await api.delete(`/users/wishlist/${apiId}`);
         setWishlisted(false);
+        refreshWishlist(); // ✅ Shop.jsx ke hearts update honge
         toast.success('Removed from wishlist');
       } else {
         await api.post(`/users/wishlist/${apiId}`);
         setWishlisted(true);
+        refreshWishlist(); // ✅
         toast.success('Added to wishlist ♡');
       }
-    } catch { toast.error('Failed to update wishlist'); }
-    finally { setWishlistLoading(false); }
+    } catch {
+      toast.error('Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
+  // ✅ Fix: auth guard added
   const handleReview = async (e) => {
     e.preventDefault();
+    if (user?.role !== 'user') return;
     setSubmitting(true);
     try {
       await api.post('/reviews', {
@@ -150,11 +169,7 @@ export default function ProductDetail() {
     const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: product.name,
-          text: `Check out "${product.name}" on U-Craft!`,
-          url,
-        });
+        await navigator.share({ title: product.name, text: `Check out "${product.name}" on U-Craft!`, url });
       } catch {}
     } else {
       navigator.clipboard.writeText(url);
@@ -179,17 +194,30 @@ export default function ProductDetail() {
     </div>
   );
 
+  // ✅ Fix: proper 404 state with CTA
   if (!product) return (
-    <div style={{ textAlign:'center', padding:'80px 16px', fontFamily:"'Cormorant Garamond',serif", fontSize:'1.8rem', color:'#8C7B6B' }}>
-      Product not found
+    <div style={{ textAlign:'center', padding:'80px 24px', fontFamily:"'DM Sans',sans-serif" }}>
+      <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'2rem', color:'#8C7B6B', marginBottom:8 }}>Product not found</p>
+      <p style={{ fontSize:'0.9rem', color:'#8C7B6B', marginBottom:28 }}>This product may have been removed or the link is incorrect.</p>
+      <Link to="/shop" style={{
+        display:'inline-flex', alignItems:'center', gap:8,
+        background:'#1A1208', color:'#FDFAF5',
+        fontFamily:"'DM Sans',sans-serif", fontSize:'0.78rem', fontWeight:600,
+        letterSpacing:'0.13em', textTransform:'uppercase',
+        padding:'13px 28px', textDecoration:'none',
+        transition:'background 0.2s',
+      }}>
+        <ArrowRight size={14}/> Back to Shop
+      </Link>
     </div>
   );
 
   const isCustomizable = product.specifications?.customizable === true || product.specifications?.customizable === 'true';
   const currentProductPath = productPath(product);
-  const currentArtistPath = artistPath(product.artist);
-  const productImage = product.images?.[0];
+  const currentArtistPath  = artistPath(product.artist);
+  const productImage       = product.images?.[0];
   const productDescription = product.description || `Buy ${product.name} handmade by ${product.artist?.brandName || 'a U-Craft artisan'}.`;
+
   const productSchema = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -198,10 +226,7 @@ export default function ProductDetail() {
     image: product.images || [],
     category: product.category,
     sku: product._id,
-    brand: {
-      '@type': 'Brand',
-      name: product.artist?.brandName || 'U-Craft'
-    },
+    brand: { '@type': 'Brand', name: product.artist?.brandName || 'U-Craft' },
     offers: {
       '@type': 'Offer',
       url: absoluteUrl(currentProductPath),
@@ -310,17 +335,15 @@ export default function ProductDetail() {
 
           {product.stock > 0 ? (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {!inCart && (
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B' }}>Qty</span>
-                  <div style={{ display:'flex', alignItems:'center', border:'1px solid #D5CAC0' }}>
-                    <button onClick={() => setQty(q => Math.max(1,q-1))} style={{ padding:'6px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'1.1rem' }}>−</button>
-                    <span style={{ padding:'6px 16px', fontSize:'0.9rem', borderLeft:'1px solid #D5CAC0', borderRight:'1px solid #D5CAC0' }}>{qty}</span>
-                    <button onClick={() => setQty(q => Math.min(product.stock,q+1))} style={{ padding:'6px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'1.1rem' }}>+</button>
-                  </div>
-                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.75rem', color:'#8C7B6B' }}>{product.stock} available</span>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B' }}>Qty</span>
+                <div style={{ display:'flex', alignItems:'center', border:'1px solid #D5CAC0' }}>
+                  <button onClick={() => setQty(q => Math.max(1,q-1))} style={{ padding:'6px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'1.1rem' }}>−</button>
+                  <span style={{ padding:'6px 16px', fontSize:'0.9rem', borderLeft:'1px solid #D5CAC0', borderRight:'1px solid #D5CAC0' }}>{qty}</span>
+                  <button onClick={() => setQty(q => Math.min(product.stock,q+1))} style={{ padding:'6px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'1.1rem' }}>+</button>
                 </div>
-              )}
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.75rem', color:'#8C7B6B' }}>{product.stock} available</span>
+              </div>
 
               <button onClick={handleBuyNow} disabled={buyingNow}
                 style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#C4622D', color:'white', border:'none', padding:'16px', fontFamily:"'DM Sans',sans-serif", fontSize:'0.84rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', cursor:buyingNow?'not-allowed':'pointer', opacity:buyingNow?0.7:1, transition:'background 0.2s' }}
@@ -345,7 +368,6 @@ export default function ProductDetail() {
                   </button>
                 )}
 
-                {/* Share Button */}
                 <button onClick={handleShare}
                   title="Share this product"
                   style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'13px 16px', border:'1.5px solid #1A1208', background:'transparent', color:'#1A1208', cursor:'pointer', transition:'all 0.2s', flexShrink:0 }}
@@ -371,15 +393,17 @@ export default function ProductDetail() {
                 </p>
               )}
 
-              {product.price < 999 && (
-                <p style={{ fontSize:'0.73rem', color:'#8C7B6B', textAlign:'center' }}>🚚 Add ₹{(999-product.price).toLocaleString()} more for free shipping</p>
+              {/* ✅ Fix: threshold from constant, only show when in stock */}
+              {product.price < FREE_SHIPPING_THRESHOLD && (
+                <p style={{ fontSize:'0.73rem', color:'#8C7B6B', textAlign:'center' }}>
+                  🚚 Add ₹{(FREE_SHIPPING_THRESHOLD - product.price).toLocaleString()} more for free shipping
+                </p>
               )}
             </div>
           ) : (
             <div style={{ background:'#F5F0EA', textAlign:'center', padding:'16px', fontFamily:"'DM Sans',sans-serif", color:'#8C7B6B' }}>Out of Stock</div>
           )}
 
-          {/* Artist card */}
           <Link to={currentArtistPath}
             style={{ display:'flex', alignItems:'center', gap:12, padding:16, border:'1px solid #EDE3D5', marginTop:32, textDecoration:'none', transition:'border-color 0.2s' }}
             onMouseEnter={e => e.currentTarget.style.borderColor='#C4622D'}
@@ -423,7 +447,7 @@ export default function ProductDetail() {
             )}
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-            {reviews.length===0 ? (
+            {reviews.length === 0 ? (
               <p style={{ fontFamily:"'DM Sans',sans-serif", color:'#8C7B6B' }}>No reviews yet. Be the first!</p>
             ) : reviews.map(r => (
               <div key={r._id} style={{ borderBottom:'1px solid #F0EAE2', paddingBottom:20 }}>
@@ -468,15 +492,9 @@ export default function ProductDetail() {
                   />
                 </div>
                 <div style={{ padding:12 }}>
-                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B', margin:'0 0 4px' }}>
-                    {p.artist?.brandName}
-                  </p>
-                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.1rem', fontWeight:600, color:'#1A1208', margin:'0 0 8px' }}>
-                    {p.name}
-                  </p>
-                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', color:'#C4622D', margin:0 }}>
-                    ₹{p.price?.toLocaleString()}
-                  </p>
+                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.67rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase', color:'#8C7B6B', margin:'0 0 4px' }}>{p.artist?.brandName}</p>
+                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.1rem', fontWeight:600, color:'#1A1208', margin:'0 0 8px' }}>{p.name}</p>
+                  <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.2rem', color:'#C4622D', margin:0 }}>₹{p.price?.toLocaleString()}</p>
                 </div>
               </Link>
             ))}

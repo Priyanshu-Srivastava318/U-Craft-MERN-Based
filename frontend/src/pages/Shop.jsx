@@ -1,33 +1,32 @@
-// ═══════════════════════════════════════════
-// Shop.jsx — with wishlist state
-// ═══════════════════════════════════════════
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, Search, X } from 'lucide-react';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext'; // ✅ added
 import { SEO } from '../utils/seo';
 
 const CATEGORIES = ['All', 'Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'];
 const SORTS = [
-  { value: 'createdAt', label: 'Newest' },
-  { value: 'popular',   label: 'Most Popular' },
-  { value: 'rating',    label: 'Top Rated' },
-  { value: 'price-asc', label: 'Price: Low to High' },
-  { value: 'price-desc',label: 'Price: High to Low' },
+  { value: 'createdAt',  label: 'Newest' },
+  { value: 'popular',    label: 'Most Popular' },
+  { value: 'rating',     label: 'Top Rated' },
+  { value: 'price-asc',  label: 'Price: Low to High' },
+  { value: 'price-desc', label: 'Price: High to Low' },
 ];
 
 export default function Shop() {
   const [params, setParams] = useSearchParams();
-  const [products, setProducts] = useState([]);
-  const [total,    setTotal]    = useState(0);
-  const [pages,    setPages]    = useState(1);
-  const [loading,  setLoading]  = useState(true);
+  const [products, setProducts]       = useState([]);
+  const [total,    setTotal]          = useState(0);
+  const [pages,    setPages]          = useState(1);
+  const [loading,  setLoading]        = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // ✅ Wishlist IDs — logged-in buyers ke liye fetch karenge
   const [wishlistedIds, setWishlistedIds] = useState([]);
+
   const { user } = useAuth();
+  const { wishlistUpdatedAt } = useCart(); // ✅ added
 
   const category = params.get('category') || 'All';
   const sort     = params.get('sort')     || 'createdAt';
@@ -36,17 +35,16 @@ export default function Shop() {
   const minPrice = params.get('minPrice') || '';
   const maxPrice = params.get('maxPrice') || '';
 
-  // ✅ User ka wishlist fetch karo — sirf buyers ke liye
+  // ✅ wishlistUpdatedAt dependency — stale hearts fix
   useEffect(() => {
     if (!user || user.role !== 'user') return;
     api.get('/users/wishlist')
       .then(({ data }) => {
-        // data is array of populated products — just extract IDs
         const ids = Array.isArray(data) ? data.map(p => p._id) : [];
         setWishlistedIds(ids);
       })
-      .catch(() => {}); // silently fail — not critical
-  }, [user]);
+      .catch(() => {});
+  }, [user, wishlistUpdatedAt]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -89,99 +87,105 @@ export default function Shop() {
     setParams(newParams);
   };
 
+  // ✅ Fix: filtered count dikhao jab filters active hon
+  const isFiltered = category !== 'All' || search || minPrice || maxPrice;
+  const displayCount = isFiltered ? products.length : total;
+
   return (
     <>
-    <SEO
-      title="Shop Handmade Gifts"
-      description="Explore handmade and personalized gifts from U-Craft artisans, including paintings, pottery, jewelry, textiles, woodwork, and custom craft products."
-      path="/shop"
-    />
-    <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8">
-        <p className="label-sm mb-2">Explore</p>
-        <h1 className="section-title">The Collection</h1>
-        <p className="font-body text-stone-500 mt-2">{total} handcrafted items from our artisans</p>
-      </div>
-
-      <div className="flex flex-wrap gap-3 mb-8">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input type="text" placeholder="Search crafts..." className="input pl-10"
-            value={search} onChange={e => setParam('search', e.target.value)} />
+      <SEO
+        title="Shop Handmade Gifts"
+        description="Explore handmade and personalized gifts from U-Craft artisans, including paintings, pottery, jewelry, textiles, woodwork, and custom craft products."
+        path="/shop"
+      />
+      <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="mb-8">
+          <p className="label-sm mb-2">Explore</p>
+          <h1 className="section-title">The Collection</h1>
+          <p className="font-body text-stone-500 mt-2">
+            {displayCount} handcrafted item{displayCount !== 1 ? 's' : ''} {isFiltered ? 'found' : 'from our artisans'}
+          </p>
         </div>
-        <select className="input !w-auto" value={sort} onChange={e => setParam('sort', e.target.value)}>
-          {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
-        <button onClick={() => setFiltersOpen(!filtersOpen)} className="btn-outline !py-3 flex items-center gap-2">
-          <SlidersHorizontal size={15} /> Filters
-        </button>
-      </div>
 
-      {filtersOpen && (
-        <div className="bg-white border border-stone-200 p-6 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div>
-            <label className="label-sm block mb-3">Min Price (₹)</label>
-            <input type="number" className="input" placeholder="0" value={minPrice} onChange={e => setParam('minPrice', e.target.value)} />
+        <div className="flex flex-wrap gap-3 mb-8">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input type="text" placeholder="Search crafts..." className="input pl-10"
+              value={search} onChange={e => setParam('search', e.target.value)} />
           </div>
-          <div>
-            <label className="label-sm block mb-3">Max Price (₹)</label>
-            <input type="number" className="input" placeholder="10000" value={maxPrice} onChange={e => setParam('maxPrice', e.target.value)} />
-          </div>
-          <div className="flex items-end">
-            <button onClick={() => { setParam('minPrice',''); setParam('maxPrice',''); }} className="btn-outline w-full flex items-center gap-2 justify-center">
-              <X size={14} /> Clear Filters
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2 mb-8">
-        {CATEGORIES.map(cat => (
-          <button key={cat} onClick={() => setParam('category', cat === 'All' ? '' : cat)}
-            className={`font-body text-xs px-4 py-2 border transition-all ${
-              category === cat || (cat === 'All' && !params.get('category'))
-                ? 'bg-craft-500 border-craft-500 text-white'
-                : 'border-stone-300 text-stone-600 hover:border-craft-400 hover:text-craft-600'
-            }`}>
-            {cat}
+          <select className="input !w-auto" value={sort} onChange={e => setParam('sort', e.target.value)}>
+            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          <button onClick={() => setFiltersOpen(!filtersOpen)} className="btn-outline !py-3 flex items-center gap-2">
+            <SlidersHorizontal size={15} /> Filters
           </button>
-        ))}
-      </div>
+        </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[...Array(12)].map((_, i) => <div key={i} className="aspect-[3/4] skeleton" />)}
-        </div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="font-display text-2xl text-stone-400">No products found</p>
-          <p className="font-body text-stone-400 mt-2">Try adjusting your filters</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map(product => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              wishlistedIds={wishlistedIds} // ✅ Pass karo — heart filled dikhega
-            />
-          ))}
-        </div>
-      )}
+        {filtersOpen && (
+          <div className="bg-white border border-stone-200 p-6 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <label className="label-sm block mb-3">Min Price (₹)</label>
+              <input type="number" className="input" placeholder="0" value={minPrice} onChange={e => setParam('minPrice', e.target.value)} />
+            </div>
+            <div>
+              <label className="label-sm block mb-3">Max Price (₹)</label>
+              <input type="number" className="input" placeholder="10000" value={maxPrice} onChange={e => setParam('maxPrice', e.target.value)} />
+            </div>
+            <div className="flex items-end">
+              <button onClick={() => { setParam('minPrice',''); setParam('maxPrice',''); }} className="btn-outline w-full flex items-center gap-2 justify-center">
+                <X size={14} /> Clear Filters
+              </button>
+            </div>
+          </div>
+        )}
 
-      {pages > 1 && (
-        <div className="flex justify-center gap-2 mt-12">
-          {[...Array(pages)].map((_, i) => (
-            <button key={i} onClick={() => setParam('page', i + 1)}
-              className={`w-10 h-10 font-body text-sm border transition-all ${
-                page === i + 1 ? 'bg-craft-500 text-white border-craft-500' : 'border-stone-300 text-stone-600 hover:border-craft-400'
+        <div className="flex flex-wrap gap-2 mb-8">
+          {CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setParam('category', cat === 'All' ? '' : cat)}
+              className={`font-body text-xs px-4 py-2 border transition-all ${
+                category === cat || (cat === 'All' && !params.get('category'))
+                  ? 'bg-craft-500 border-craft-500 text-white'
+                  : 'border-stone-300 text-stone-600 hover:border-craft-400 hover:text-craft-600'
               }`}>
-              {i + 1}
+              {cat}
             </button>
           ))}
         </div>
-      )}
-    </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(12)].map((_, i) => <div key={i} className="aspect-[3/4] skeleton" />)}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display text-2xl text-stone-400">No products found</p>
+            <p className="font-body text-stone-400 mt-2">Try adjusting your filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products.map(product => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                wishlistedIds={wishlistedIds}
+              />
+            ))}
+          </div>
+        )}
+
+        {pages > 1 && (
+          <div className="flex justify-center gap-2 mt-12">
+            {[...Array(pages)].map((_, i) => (
+              <button key={i} onClick={() => setParam('page', i + 1)}
+                className={`w-10 h-10 font-body text-sm border transition-all ${
+                  page === i + 1 ? 'bg-craft-500 text-white border-craft-500' : 'border-stone-300 text-stone-600 hover:border-craft-400'
+                }`}>
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

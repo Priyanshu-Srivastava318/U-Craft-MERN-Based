@@ -6,13 +6,7 @@ import ProductCard from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
 import { JsonLd, SEO, SITE_URL } from '../utils/seo';
 
-if (!document.getElementById('ucraft-fonts')) {
-  const link = document.createElement('link');
-  link.id = 'ucraft-fonts';
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Instrument+Serif:ital@1&display=swap';
-  document.head.appendChild(link);
-}
+// ✅ Font injection block REMOVED — fonts already in index.html
 
 function useReveal() {
   const ref = useRef(null);
@@ -71,9 +65,12 @@ export default function Home() {
   const [loading, setLoading]   = useState(true);
   const [stats, setStats]       = useState({ artists: 9, products: 12, categories: 4 });
 
-  const missionRef = useReveal();
-  const productRef = useReveal();
-  const ctaRef     = useReveal();
+  const missionRef  = useReveal();
+  const productRef  = useReveal();
+  // ✅ Fix: 3 alag refs — pehle sab ek hi ctaRef share karte the
+  const ctaGuestRef  = useReveal();
+  const ctaBuyerRef  = useReveal();
+  const ctaArtistRef = useReveal();
 
   useEffect(() => {
     api.get('/products?limit=4&sort=popular')
@@ -149,7 +146,6 @@ export default function Home() {
               display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center',
               paddingTop:72, paddingBottom:72,
             }}>
-              {/* Left */}
               <div>
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:22 }}>
                   <span style={{ width:38, height:2, background:'var(--clay)', display:'block', flexShrink:0 }} />
@@ -170,15 +166,10 @@ export default function Home() {
 
                 <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:40 }}>
                   <Link to="/shop" className="ucbp">Explore the Shop <ArrowRight size={13}/></Link>
-                  {!isArtist && (
-                    <Link to="/artists" className="ucbo">Meet the Artisans</Link>
-                  )}
-                  {isArtist && (
-                    <Link to="/artist/dashboard" className="ucbo">My Dashboard</Link>
-                  )}
+                  {!isArtist && <Link to="/artists" className="ucbo">Meet the Artisans</Link>}
+                  {isArtist && <Link to="/artist/dashboard" className="ucbo">My Dashboard</Link>}
                 </div>
 
-                {/* Stats — Real data */}
                 <div className="uc-sg" style={{ display:'flex', gap:0, borderTop:'1px solid #D5CAC0', paddingTop:26 }}>
                   {[
                     { n: stats.artists,    sfx:'+', label:'Artisans' },
@@ -200,7 +191,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Right visual */}
               <div className="uc-hr" style={{ position:'relative', height:460, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <div style={{ position:'absolute', right:0, top:0, width:'58%', height:'74%', background:'var(--parch-dk)', zIndex:0 }} />
                 <div className="uc-card" style={{
@@ -280,12 +270,9 @@ export default function Home() {
 
             <div style={{ borderBottom:'1px solid rgba(255,255,255,.05)' }}>
               {missions.map(m => (
-                <div
-                  key={m.num}
-                  className="ucmr"
+                <div key={m.num} className="ucmr"
                   onMouseEnter={e=>e.currentTarget.style.paddingLeft='10px'}
-                  onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}
-                >
+                  onMouseLeave={e=>e.currentTarget.style.paddingLeft='0'}>
                   <span className="ucd" style={{ fontSize:'.9rem', color:'var(--clay)', opacity:.5 }}>{m.num}</span>
                   <h4 className="ucd" style={{ fontSize:'1.45rem', color:'white', fontWeight:500 }}>{m.title}</h4>
                   <p className="uc-mb" style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.86rem', color:'rgba(247,240,230,.4)', lineHeight:1.7 }}>{m.body}</p>
@@ -330,10 +317,10 @@ export default function Home() {
           )}
         </section>
 
-        {/* ══ ARTIST CTA — only shown to guests ══ */}
+        {/* ══ GUEST CTA ══ */}
         {!user && (
           <section style={{ padding:'0 40px 80px' }}>
-            <div ref={ctaRef} data-reveal className="uc-ctabg uc-cg" style={{ maxWidth:1280, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr' }}>
+            <div ref={ctaGuestRef} data-reveal className="uc-ctabg uc-cg" style={{ maxWidth:1280, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr' }}>
               <div style={{ padding:'60px 52px', position:'relative', zIndex:1 }}>
                 <span className="uci" style={{ fontFamily:"'Instrument Serif',serif", fontSize:'1.1rem', color:'rgba(255,255,255,.58)', display:'block', marginBottom:12 }}>
                   Are you a creator?
@@ -358,7 +345,6 @@ export default function Home() {
                   onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='5px 5px 0 rgba(26,18,8,.16)';}}
                 >Become an Artist <ArrowRight size={13}/></Link>
               </div>
-
               <div className="uc-cr" style={{ display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(26,18,8,.13)', padding:36, position:'relative', overflow:'hidden' }}>
                 <span className="ucd" style={{ fontSize:'clamp(4rem,7.5vw,7rem)', color:'rgba(255,255,255,.07)', lineHeight:.9, userSelect:'none', textAlign:'center' }}>
                   Make.<br/>Sell.<br/>Shine.
@@ -370,10 +356,10 @@ export default function Home() {
           </section>
         )}
 
-        {/* ══ LOGGED-IN USER CTA ══ */}
+        {/* ══ BUYER CTA ══ */}
         {user && !isArtist && (
           <section style={{ padding:'0 40px 80px' }}>
-            <div ref={ctaRef} data-reveal style={{
+            <div ref={ctaBuyerRef} data-reveal style={{
               maxWidth:1280, margin:'0 auto',
               background:'var(--parch)', border:'1px solid #D5CAC0',
               padding:'52px 56px',
@@ -395,10 +381,10 @@ export default function Home() {
           </section>
         )}
 
-        {/* ══ ARTIST CTA — when artist is logged in ══ */}
+        {/* ══ ARTIST CTA ══ */}
         {isArtist && (
           <section style={{ padding:'0 40px 80px' }}>
-            <div ref={ctaRef} data-reveal style={{
+            <div ref={ctaArtistRef} data-reveal style={{
               maxWidth:1280, margin:'0 auto',
               background:'var(--ink)',
               padding:'52px 56px',
