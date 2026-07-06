@@ -68,7 +68,10 @@ router.post('/forgot-password', async (req, res) => {
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
-    if (!user) return res.json({ message: genericMessage });
+    if (!user) {
+      console.warn('Password reset requested for unknown email:', normalizedEmail);
+      return res.json({ message: genericMessage });
+    }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -87,12 +90,9 @@ router.post('/forgot-password', async (req, res) => {
     const clientURL = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
     const resetUrl = `${clientURL.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl })
-        .catch((err) => console.error('Password reset email error:', err.message));
-    } else {
-      console.warn('Password reset email is not configured. Link:', resetUrl);
-    }
+    sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl })
+      .then(() => console.log('Password reset email queued for:', user.email))
+      .catch((err) => console.error('Password reset email error:', err.message, 'Link:', resetUrl));
 
     const response = { message: genericMessage };
     if (process.env.NODE_ENV !== 'production' && (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)) {

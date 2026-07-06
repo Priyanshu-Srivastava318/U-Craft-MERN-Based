@@ -1,17 +1,24 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-});
+const hasSmtpConfig = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const hasResendConfig = Boolean(process.env.RESEND_API_KEY);
 
-const FROM = `UCraft <${process.env.EMAIL_USER}>`;
+const transporter = hasSmtpConfig
+  ? nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    })
+  : null;
+
+const resend = hasResendConfig ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM = process.env.EMAIL_FROM || (process.env.EMAIL_USER ? `UCraft <${process.env.EMAIL_USER}>` : 'U-Craft <onboarding@resend.dev>');
 
 // ── Base HTML wrapper ────────────────────────────────────────
 const baseTemplate = (content) => `
@@ -108,7 +115,17 @@ const renderStages = (currentStatus) => {
 
 // ── Send helper ──────────────────────────────────────────────
 const send = async ({ to, subject, html }) => {
-  await transporter.sendMail({ from: FROM, to, subject, html });
+  if (transporter) {
+    await transporter.sendMail({ from: FROM, to, subject, html });
+    return;
+  }
+
+  if (resend) {
+    await resend.emails.send({ from: FROM, to, subject, html });
+    return;
+  }
+
+  throw new Error('Email service is not configured. Add EMAIL_USER/EMAIL_PASS or RESEND_API_KEY.');
 };
 
 // ════════════════════════════════════════════════════════════
