@@ -7,7 +7,19 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext'; // ✅ added
 import { SEO } from '../utils/seo';
 
-const CATEGORIES = ['All', 'Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'];
+const CATEGORY_FILTERS = [
+  { value: 'All', label: 'All Products' },
+  { value: 'Paintings', label: 'Portraits & Paintings' },
+  { value: 'Pottery', label: 'Clay & Pottery' },
+  { value: 'Jewelry', label: 'Jewellery Gifts' },
+  { value: 'Textiles', label: 'Fabric Crafts' },
+  { value: 'Woodwork', label: 'Wood Decor' },
+  { value: 'Metalwork', label: 'Metal Crafts' },
+  { value: 'Leather', label: 'Leather Goods' },
+  { value: 'Glass', label: 'Glass Art' },
+  { value: 'Paper', label: 'Paper Crafts' },
+  { value: 'Other', label: 'Custom Pieces' },
+];
 const SORTS = [
   { value: 'createdAt',  label: 'Newest' },
   { value: 'popular',    label: 'Most Popular' },
@@ -83,13 +95,13 @@ export default function Shop() {
   const setParam = (key, value) => {
     const newParams = new URLSearchParams(params);
     if (value) newParams.set(key, value); else newParams.delete(key);
-    newParams.delete('page');
+    if (key !== 'page') newParams.delete('page');
     setParams(newParams);
   };
 
   // ✅ Fix: filtered count dikhao jab filters active hon
   const isFiltered = category !== 'All' || search || minPrice || maxPrice;
-  const displayCount = isFiltered ? products.length : total;
+  const displayCount = total;
 
   return (
     <>
@@ -140,14 +152,14 @@ export default function Shop() {
         )}
 
         <div className="flex flex-wrap gap-2 mb-8">
-          {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setParam('category', cat === 'All' ? '' : cat)}
+          {CATEGORY_FILTERS.map(({ value, label }) => (
+            <button key={value} onClick={() => setParam('category', value === 'All' ? '' : value)}
               className={`font-body text-xs px-4 py-2 border transition-all ${
-                category === cat || (cat === 'All' && !params.get('category'))
+                category === value || (value === 'All' && !params.get('category'))
                   ? 'bg-craft-500 border-craft-500 text-white'
                   : 'border-stone-300 text-stone-600 hover:border-craft-400 hover:text-craft-600'
               }`}>
-              {cat}
+              {label}
             </button>
           ))}
         </div>
@@ -189,3 +201,4 @@ export default function Shop() {
     </>
   );
 }
+

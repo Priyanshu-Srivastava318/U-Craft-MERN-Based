@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, ShoppingBag, Star, TrendingUp,
-  Plus, Edit2, Trash2, Eye, Bell, X, ImagePlus, UserCircle
+  Plus, Edit2, Trash2, Eye, Bell, X, ImagePlus, UserCircle, MessageCircle
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -94,12 +94,25 @@ export default function ArtistDashboard() {
 
   useEffect(() => {
     if (!socket) return;
-    socket.on('new-order', (data) => {
-      setNotifications(p => [{ ...data, id:Date.now(), read:false }, ...p]);
+
+    const handleNewOrder = (data) => {
+      setNotifications(p => [{ ...data, type:'order', id:Date.now(), read:false }, ...p]);
       toast.success(`New order! #${data.orderNumber}`);
       fetchOrders();
-    });
-    return () => socket.off('new-order');
+    };
+
+    const handleNewChat = (data) => {
+      setNotifications(p => [{ ...data, type:'chat', id:Date.now(), read:false }, ...p]);
+      toast.success(`New message from ${data.buyerName || 'a customer'}`);
+    };
+
+    socket.on('new-order', handleNewOrder);
+    socket.on('new-chat', handleNewChat);
+
+    return () => {
+      socket.off('new-order', handleNewOrder);
+      socket.off('new-chat', handleNewChat);
+    };
   }, [socket]);
 
   const fetchAll      = async () => { try { await Promise.all([fetchStats(), fetchProducts(), fetchOrders(), fetchProfile()]); } finally { setLoading(false); } };
@@ -302,6 +315,7 @@ export default function ArtistDashboard() {
             { id:'overview', label:'Overview',     icon:TrendingUp  },
             { id:'products', label:'Products',     icon:Package     },
             { id:'orders',   label:'Orders',       icon:ShoppingBag },
+            { id:'messages', label:'Messages',     icon:MessageCircle },
             { id:'profile',  label:'Edit Profile', icon:UserCircle  },
           ].map(({ id, label, icon:Icon }) => (
             <button key={id} onClick={() => setActiveTab(id)} className={`dash-tab ${activeTab===id?'active':''}`}>
@@ -543,6 +557,22 @@ export default function ArtistDashboard() {
           </div>
         )}
 
+        {/* Messages */}
+        {activeTab === 'messages' && (
+          <div style={{ maxWidth:640 }}>
+            <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'1.4rem', fontWeight:600, marginBottom:16 }}>
+              Customer Messages
+            </h2>
+            <div style={{ ...S.card, display:'flex', flexDirection:'column', gap:14 }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.9rem', color:'var(--stone)', lineHeight:1.6 }}>
+                Open your customer inbox to reply to customization requests and product questions.
+              </p>
+              <Link to={`/chat/${artistProfile?._id}`} style={{ ...S.btnPrim, width:'fit-content' }} className="dash-btn-p">
+                <MessageCircle size={14}/> Open Inbox
+              </Link>
+            </div>
+          </div>
+        )}
         {/* ── EDIT PROFILE ── */}
         {activeTab === 'profile' && (
           <div style={{ maxWidth:560 }}>

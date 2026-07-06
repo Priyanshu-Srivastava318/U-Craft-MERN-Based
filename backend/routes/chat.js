@@ -20,7 +20,7 @@ router.get('/token', protect, async (req, res) => {
     await serverClient.upsertUser({
       id: userId,
       name: user.name,
-      role: 'user',
+      role: req.user.role,
     });
 
     const token = serverClient.createToken(userId);
@@ -42,15 +42,15 @@ router.post('/channel', protect, async (req, res) => {
     const buyerId = req.user._id.toString();
 
     // Artist ka User ID dhundo
-    const artistDoc = await Artist.findById(artistId).populate('user', 'name');
+    const artistDoc = await Artist.findById(artistId).populate('user', 'name email');
     if (!artistDoc) return res.status(404).json({ message: 'Artist not found' });
 
     const artistUserId = artistDoc.user._id.toString();
 
     // Dono ko Stream pe upsert karo
     await serverClient.upsertUsers([
-      { id: buyerId },
-      { id: artistUserId },
+      { id: buyerId, name: req.user.name },
+      { id: artistUserId, name: artistDoc.user.name || artistDoc.brandName },
     ]);
 
     // Unique channel ID — buyer + artist combination
@@ -64,6 +64,14 @@ router.post('/channel', protect, async (req, res) => {
 
     await channel.create();
 
+    const io = req.app.get('io');
+    io?.to('artist-' + artistDoc._id.toString()).emit('new-chat', {
+      channelId,
+      buyerId,
+      buyerName: req.user.name,
+      artistId: artistDoc._id,
+    });
+
     res.json({
       channelId,
       artistName: artistDoc.brandName,
@@ -75,3 +83,4 @@ router.post('/channel', protect, async (req, res) => {
 });
 
 module.exports = router;
+
