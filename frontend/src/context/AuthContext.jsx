@@ -4,6 +4,20 @@ import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
+function getSocketURL() {
+  const rawURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  try {
+    const url = new URL(rawURL, window.location.origin);
+    url.pathname = url.pathname.replace(/\/api\/?$/, '') || '/';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return 'http://localhost:5000';
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser]                   = useState(null);
   const [artistProfile, setArtistProfile] = useState(null);
@@ -13,11 +27,12 @@ export function AuthProvider({ children }) {
   /* ── Socket connect/disconnect based on user ── */
   useEffect(() => {
     if (user) {
-      // Socket URL = Railway base URL (without /api)
-      const socketURL = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
-        .replace('/api', '');
+      const socketURL = getSocketURL();
 
-      const s = io(socketURL, { transports: ['websocket'] });
+      const s = io(socketURL, {
+        transports: ['websocket', 'polling'],
+        withCredentials: true,
+      });
 
       s.on('connect', () => {
         if (user.role === 'artist' && artistProfile) {

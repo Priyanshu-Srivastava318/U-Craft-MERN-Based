@@ -9,6 +9,8 @@ import Footer from './components/Footer';
 
 import Home            from './pages/Home';
 import Login           from './pages/Login';
+import ForgotPassword  from './pages/ForgotPassword';
+import ResetPassword   from './pages/ResetPassword';
 import Register        from './pages/Register';
 import Shop            from './pages/Shop';
 import ProductDetail   from './pages/ProductDetail';
@@ -148,7 +150,9 @@ export default function App() {
           <PageTransition>
             <Routes>
               {/* Public */}
-              <Route path="/login"       element={<Login />} />
+                            <Route path="/login"       element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/register"    element={<Register />} />
               <Route path="/"            element={<Layout><Home /></Layout>} />
               <Route path="/shop"        element={<Layout><Shop /></Layout>} />

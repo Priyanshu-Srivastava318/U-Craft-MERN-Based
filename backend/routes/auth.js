@@ -1,9 +1,10 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const User = require('../models/User');
 const Artist = require('../models/Artist');
 const { generateToken, protect } = require('../middleware/auth');
-const { sendWelcomeEmail } = require('../utils/emailService');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -57,6 +58,65 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const genericMessage = 'If an account exists, a password reset link has been sent.';
+
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    if (!user) return res.json({ message: genericMessage });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+
+    const clientURL = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
+    const resetUrl = `${clientURL.replace(/\/$/, '')}/reset-password/${resetToken}`;
+
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      await sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl });
+      return res.json({ message: genericMessage });
+    }
+
+    console.log('Password reset link:', resetUrl);
+    const response = { message: genericMessage };
+    if (process.env.NODE_ENV !== 'production') response.devResetUrl = resetUrl;
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to start password reset' });
+  }
+});
+
+// POST /api/auth/reset-password/:token
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) return res.status(400).json({ message: 'Reset link is invalid or expired' });
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful. You can sign in now.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to reset password' });
+  }
+});
 // GET /api/auth/me
 router.get('/me', protect, async (req, res) => {
   try {

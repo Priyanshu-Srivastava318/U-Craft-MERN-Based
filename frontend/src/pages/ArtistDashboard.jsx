@@ -19,6 +19,7 @@ const STATUS_COLORS = {
 };
 const STATUS_OPTIONS = ['placed','confirmed','processing','shipped','delivered','cancelled'];
 const CATEGORIES = ['Paintings','Pottery','Jewelry','Textiles','Woodwork','Metalwork','Leather','Glass','Paper','Other'];
+const MAX_PRODUCT_IMAGES = 7;
 
 function ImageUploadZone({ images, onChange }) {
   const inputRef  = useRef(null);
@@ -27,8 +28,8 @@ function ImageUploadZone({ images, onChange }) {
   const addFiles = (files) => {
     const valid = Array.from(files).filter(f => f.type.startsWith('image/'));
     const total = images.length + valid.length;
-    if (total > 4) { toast.error('Max 4 images allowed'); return; }
-    onChange([...images, ...valid.slice(0, 4 - images.length)]);
+    if (total > MAX_PRODUCT_IMAGES) { toast.error(`Max ${MAX_PRODUCT_IMAGES} images allowed`); return; }
+    onChange([...images, ...valid.slice(0, MAX_PRODUCT_IMAGES - images.length)]);
   };
 
   const remove = (i) => onChange(images.filter((_, idx) => idx !== i));
@@ -43,11 +44,11 @@ function ImageUploadZone({ images, onChange }) {
         style={{ border:`2px dashed ${dragging?'var(--clay)':'#D5CAC0'}`, background:dragging?'rgba(196,98,45,.04)':'var(--parch)', padding:'28px 20px', textAlign:'center', cursor:'pointer', transition:'all .2s', marginBottom:12 }}>
         <ImagePlus size={28} style={{ color:'var(--stone)', margin:'0 auto 8px' }}/>
         <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.85rem', color:'var(--stone)', marginBottom:4 }}>Click or drag images here</p>
-        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'#B0A090' }}>JPG, PNG, WEBP · Max 5MB each · Up to 4 images</p>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'#B0A090' }}>JPG, PNG, WEBP · Max 5MB each · Up to 7 images</p>
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)}/>
       </div>
       {images.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(72px,1fr))', gap:8 }}>
           {images.map((img,i) => (
             <div key={i} style={{ position:'relative', aspectRatio:'1', background:'#f0e8de' }}>
               <img src={typeof img==='string'?img:URL.createObjectURL(img)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
@@ -75,6 +76,9 @@ export default function ArtistDashboard() {
   const [editingId,     setEditingId]     = useState(null);
   const [submitting,    setSubmitting]    = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [browserNotificationStatus, setBrowserNotificationStatus] = useState(() => (
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  ));
 
   // Profile edit state
   const [profileForm,    setProfileForm]    = useState({ brandName:'', bio:'', location:'', specialty:'', instagram:'', website:'' });
@@ -102,8 +106,16 @@ export default function ArtistDashboard() {
     };
 
     const handleNewChat = (data) => {
+      const buyerName = data.buyerName || 'a customer';
       setNotifications(p => [{ ...data, type:'chat', id:Date.now(), read:false }, ...p]);
-      toast.success(`New message from ${data.buyerName || 'a customer'}`);
+      toast.success(`New message from ${buyerName}`);
+
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('New U-Craft message', {
+          body: `${buyerName} sent you a customization message.`,
+          tag: data.channelId || 'ucraft-chat',
+        });
+      }
     };
 
     socket.on('new-order', handleNewOrder);
@@ -184,6 +196,18 @@ export default function ArtistDashboard() {
     catch { toast.error('Failed to update'); }
   };
 
+  const enableBrowserNotifications = async () => {
+    if (typeof Notification === 'undefined') {
+      toast.error('Browser notifications are not supported here');
+      setBrowserNotificationStatus('unsupported');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setBrowserNotificationStatus(permission);
+    if (permission === 'granted') toast.success('Browser alerts enabled');
+    else toast.error('Browser alerts were not enabled');
+  };
   const handleProfileSave = async (e) => {
     e.preventDefault();
     setProfileSaving(true);
@@ -441,7 +465,7 @@ export default function ArtistDashboard() {
                     {editingId && form.existingImages.length>0 && form.imageFiles.length===0 && (
                       <div style={{ marginBottom:12 }}>
                         <p style={{ fontSize:'.75rem', color:'var(--stone)', marginBottom:8 }}>Current images:</p>
-                        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:12 }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(72px,1fr))', gap:8, marginBottom:12 }}>
                           {form.existingImages.map((url,i) => (
                             <div key={i} style={{ aspectRatio:'1', overflow:'hidden' }}>
                               <img src={url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
@@ -567,9 +591,16 @@ export default function ArtistDashboard() {
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.9rem', color:'var(--stone)', lineHeight:1.6 }}>
                 Open your customer inbox to reply to customization requests and product questions.
               </p>
-              <Link to={`/chat/${artistProfile?._id}`} style={{ ...S.btnPrim, width:'fit-content' }} className="dash-btn-p">
-                <MessageCircle size={14}/> Open Inbox
-              </Link>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <Link to={`/chat/${artistProfile?._id}`} style={{ ...S.btnPrim, width:'fit-content' }} className="dash-btn-p">
+                  <MessageCircle size={14}/> Open Inbox
+                </Link>
+                {browserNotificationStatus !== 'granted' && browserNotificationStatus !== 'unsupported' && (
+                  <button type="button" onClick={enableBrowserNotifications} style={{ ...S.btnOut, width:'fit-content' }} className="dash-btn-o">
+                    <Bell size={14}/> Enable Alerts
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

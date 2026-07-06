@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, LogOut, LayoutDashboard, Heart, Package } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, LogOut, LayoutDashboard, Heart, Package, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, artistProfile, logout } = useAuth();
   const { cartCount, setCartOpen } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -124,9 +124,14 @@ export default function Navbar() {
                 {profileOpen && (
                   <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:210, background:'white', border:'1.5px solid var(--parch-dk)', boxShadow:'4px 4px 0 rgba(26,18,8,0.07)', zIndex:100 }}>
                     {user.role === 'artist' ? (
-                      <Link to="/artist/dashboard" style={dropStyle}>
-                        <LayoutDashboard size={15}/> Dashboard
-                      </Link>
+                      <>
+                        <Link to={`/chat/${artistProfile?._id || user._id}`} style={dropStyle}>
+                          <MessageCircle size={15}/> Chats
+                        </Link>
+                        <Link to="/artist/dashboard" style={dropStyle}>
+                          <LayoutDashboard size={15}/> Dashboard
+                        </Link>
+                      </>
                     ) : (
                       <>
                         <Link to="/orders" style={dropStyle}>
@@ -184,9 +189,14 @@ export default function Navbar() {
                 </Link>
               )}
               {user.role === 'artist' && (
-                <Link to="/artist/dashboard" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
-                  <LayoutDashboard size={15}/> Dashboard
-                </Link>
+                <>
+                  <Link to={`/chat/${artistProfile?._id || user._id}`} style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                    <MessageCircle size={15}/> Chats
+                  </Link>
+                  <Link to="/artist/dashboard" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
+                    <LayoutDashboard size={15}/> Dashboard
+                  </Link>
+                </>
               )}
               <Link to="/profile" style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 0', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', color:'var(--ink)', textDecoration:'none', borderBottom:'1px solid var(--parch)' }}>
                 <User size={15}/> Profile

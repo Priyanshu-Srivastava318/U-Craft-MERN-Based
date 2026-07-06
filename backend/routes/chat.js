@@ -5,30 +5,44 @@ const { protect } = require('../middleware/auth');
 const Artist = require('../models/Artist');
 const User = require('../models/User');
 
-const serverClient = StreamChat.getInstance(
-  process.env.STREAM_API_KEY,
-  process.env.STREAM_API_SECRET
-);
+const getStreamConfig = () => ({
+  apiKey: process.env.STREAM_API_KEY || process.env.STREAM_CHAT_API_KEY,
+  apiSecret: process.env.STREAM_API_SECRET || process.env.STREAM_CHAT_API_SECRET,
+});
+
+let serverClient = null;
+function getServerClient() {
+  const { apiKey, apiSecret } = getStreamConfig();
+  if (!apiKey || !apiSecret) return null;
+  if (!serverClient) serverClient = StreamChat.getInstance(apiKey, apiSecret);
+  return serverClient;
+}
 
 // GET /api/chat/token — Stream token generate karo
 router.get('/token', protect, async (req, res) => {
   try {
+    const client = getServerClient();
+    const { apiKey } = getStreamConfig();
+    if (!client) {
+      return res.status(503).json({ message: 'Chat service is not configured. Add STREAM_API_KEY and STREAM_API_SECRET on the server.' });
+    }
+
     const userId = req.user._id.toString();
     const user = await User.findById(userId);
 
     // ✅ Stream pe user upsert karo
-    await serverClient.upsertUser({
+    await client.upsertUser({
       id: userId,
       name: user.name,
       role: req.user.role,
     });
 
-    const token = serverClient.createToken(userId);
+    const token = client.createToken(userId);
     res.json({
       token,
       userId,
       userName: user.name,
-      apiKey: process.env.STREAM_API_KEY,
+      apiKey,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -38,6 +52,11 @@ router.get('/token', protect, async (req, res) => {
 // POST /api/chat/channel — buyer-artist channel create karo
 router.post('/channel', protect, async (req, res) => {
   try {
+    const client = getServerClient();
+    if (!client) {
+      return res.status(503).json({ message: 'Chat service is not configured. Add STREAM_API_KEY and STREAM_API_SECRET on the server.' });
+    }
+
     const { artistId } = req.body; // Artist._id (not User._id)
     const buyerId = req.user._id.toString();
 
@@ -48,7 +67,7 @@ router.post('/channel', protect, async (req, res) => {
     const artistUserId = artistDoc.user._id.toString();
 
     // Dono ko Stream pe upsert karo
-    await serverClient.upsertUsers([
+    await client.upsertUsers([
       { id: buyerId, name: req.user.name },
       { id: artistUserId, name: artistDoc.user.name || artistDoc.brandName },
     ]);
@@ -56,7 +75,7 @@ router.post('/channel', protect, async (req, res) => {
     // Unique channel ID — buyer + artist combination
     const channelId = `ucraft-${[buyerId, artistUserId].sort().join('-')}`;
 
-    const channel = serverClient.channel('messaging', channelId, {
+    const channel = client.channel('messaging', channelId, {
       members: [buyerId, artistUserId],
       created_by_id: buyerId,
       name: `Chat with ${artistDoc.brandName}`,

@@ -253,6 +253,15 @@ const sendWelcomeEmail = async ({ email, name, role }) => {
 };
 
 // ── Safe wrappers ────────────────────────────────────────────
+const sendPasswordResetEmail = async ({ email, name, resetUrl }) => {
+  const html = baseTemplate(`
+    <p class="greeting">Reset your password</p>
+    <p class="subtext">Hi ${name}, use the button below to create a new U-Craft password. This link expires in 15 minutes.</p>
+    <a href="${resetUrl}" class="btn">Reset Password</a>
+    <p style="font-size:12px;color:#8C7B6B;line-height:1.6;margin-top:12px">If the button does not work, open this link:<br/>${resetUrl}</p>
+  `);
+  await send({ to: email, subject: 'Reset your U-Craft password', html });
+};
 const safeEmail = (fn) => async (...args) => {
   try { await fn(...args); }
   catch (err) { console.error('Email error:', err.message); }
@@ -263,4 +272,5 @@ module.exports = {
   sendOrderStatusUpdate: safeEmail(sendOrderStatusUpdate),
   sendNewOrderToArtist:  safeEmail(sendNewOrderToArtist),
   sendWelcomeEmail:      safeEmail(sendWelcomeEmail),
+  sendPasswordResetEmail,
 };

@@ -32,7 +32,7 @@ const coverStorage = new CloudinaryStorage({
 const uploadProduct = multer({
   storage: productStorage,
   limits:  { fileSize: 5 * 1024 * 1024 }, // 5MB per file
-}).array('images', 4); // max 4 images
+}).array('images', 7); // max 7 images
 
 const uploadCover = multer({
   storage: coverStorage,

@@ -354,6 +354,12 @@ export default function Login() {
                 </div>
               </div>
 
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:-8 }}>
+                <Link to="/forgot-password" style={{ fontSize:'.78rem', color:'var(--clay)', textDecoration:'none', fontWeight:600 }}>
+                  Forgot password?
+                </Link>
+              </div>
+
               <div style={{ paddingTop: 8 }}>
                 <button type="submit" disabled={loading} className="auth-submit">
                   {loading ? (

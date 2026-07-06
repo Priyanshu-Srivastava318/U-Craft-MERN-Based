@@ -93,7 +93,7 @@ export default function ChatPage() {
         setChannel(buyerChannel);
       } catch (err) {
         console.error(err);
-        setError('Could not connect to chat. Please try again.');
+        setError(err.response?.data?.message || 'Could not connect to chat. Please try again.');
       } finally {
         if (!cancelled) setLoading(false);
       }
