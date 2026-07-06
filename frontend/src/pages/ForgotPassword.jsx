@@ -15,7 +15,7 @@ export default function ForgotPassword() {
     setLoading(true);
     setDevLink('');
     try {
-      const { data } = await api.post('/auth/forgot-password', { email });
+      const { data } = await api.post('/auth/forgot-password', { email }, { timeout: 15000 });
       setSent(true);
       if (data.devResetUrl) setDevLink(data.devResetUrl);
       toast.success('Reset instructions sent if the email exists.');

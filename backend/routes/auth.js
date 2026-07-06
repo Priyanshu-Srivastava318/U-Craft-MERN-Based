@@ -60,34 +60,48 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/forgot-password
 router.post('/forgot-password', async (req, res) => {
+  const genericMessage = 'If an account exists, a password reset link has been sent.';
+
   try {
     const { email } = req.body;
-    const genericMessage = 'If an account exists, a password reset link has been sent.';
-
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
-    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.json({ message: genericMessage });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
-    await user.save({ validateBeforeSave: false });
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          resetPasswordToken: hashedToken,
+          resetPasswordExpires: resetExpires,
+        },
+      }
+    );
 
     const clientURL = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
     const resetUrl = `${clientURL.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      await sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl });
-      return res.json({ message: genericMessage });
+      sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl })
+        .catch((err) => console.error('Password reset email error:', err.message));
+    } else {
+      console.warn('Password reset email is not configured. Link:', resetUrl);
     }
 
-    console.log('Password reset link:', resetUrl);
     const response = { message: genericMessage };
-    if (process.env.NODE_ENV !== 'production') response.devResetUrl = resetUrl;
-    res.json(response);
+    if (process.env.NODE_ENV !== 'production' && (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)) {
+      response.devResetUrl = resetUrl;
+    }
+    return res.json(response);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to start password reset' });
+    console.error('Forgot password error:', error);
+    return res.json({ message: genericMessage });
   }
 });
 
