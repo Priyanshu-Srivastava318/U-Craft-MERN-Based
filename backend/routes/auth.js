@@ -6,6 +6,11 @@ const Artist = require('../models/Artist');
 const { generateToken, protect } = require('../middleware/auth');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
+const withTimeout = (promise, ms, message) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+]);
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -90,14 +95,22 @@ router.post('/forgot-password', async (req, res) => {
     const clientURL = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
     const resetUrl = `${clientURL.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl })
-      .then(() => console.log('Password reset email queued for:', user.email))
-      .catch((err) => console.error('Password reset email error:', err.message, 'Link:', resetUrl));
+    try {
+      await withTimeout(
+        sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl }),
+        12000,
+        'Email service timed out'
+      );
+      console.log('Password reset email sent for:', user.email);
+    } catch (emailError) {
+      console.error('Password reset email error:', emailError.message, 'Link:', resetUrl);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(502).json({ message: 'Could not send reset email. Please try again in a few minutes.' });
+      }
+    }
 
     const response = { message: genericMessage };
-    if (process.env.NODE_ENV !== 'production' && (!process.env.EMAIL_USER || !process.env.EMAIL_PASS)) {
-      response.devResetUrl = resetUrl;
-    }
+    if (process.env.NODE_ENV !== 'production') response.devResetUrl = resetUrl;
     return res.json(response);
   } catch (error) {
     console.error('Forgot password error:', error);
