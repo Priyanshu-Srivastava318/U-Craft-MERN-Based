@@ -34,7 +34,7 @@ router.get('/token', protect, async (req, res) => {
     await client.upsertUser({
       id: userId,
       name: user.name,
-      role: req.user.role,
+      ucraftRole: req.user.role,
     });
 
     const token = client.createToken(userId);
@@ -68,8 +68,8 @@ router.post('/channel', protect, async (req, res) => {
 
     // Dono ko Stream pe upsert karo
     await client.upsertUsers([
-      { id: buyerId, name: req.user.name },
-      { id: artistUserId, name: artistDoc.user.name || artistDoc.brandName },
+      { id: buyerId, name: req.user.name, ucraftRole: req.user.role },
+      { id: artistUserId, name: artistDoc.user.name || artistDoc.brandName, ucraftRole: 'artist' },
     ]);
 
     // Unique channel ID — buyer + artist combination
