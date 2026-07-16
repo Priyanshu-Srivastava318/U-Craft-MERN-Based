@@ -16,6 +16,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://u-craft.in',
   'https://www.u-craft.in',
+  'https://api.u-craft.in',                  // ✅ custom domain added
+  'https://u-craft-mern-based.vercel.app',   // ✅ vercel preview added
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
