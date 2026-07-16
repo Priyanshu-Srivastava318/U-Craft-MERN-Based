@@ -19,7 +19,7 @@ const STATUS_COLORS = {
 };
 const STATUS_OPTIONS = ['placed','confirmed','processing','shipped','delivered','cancelled'];
 const CATEGORIES = ['Paintings','Pottery','Jewelry','Textiles','Woodwork','Metalwork','Leather','Glass','Paper','Other'];
-const MAX_PRODUCT_IMAGES = 7;
+const MAX_PRODUCT_IMAGES = 8;
 
 function ImageUploadZone({ images, onChange }) {
   const inputRef  = useRef(null);
@@ -44,7 +44,7 @@ function ImageUploadZone({ images, onChange }) {
         style={{ border:`2px dashed ${dragging?'var(--clay)':'#D5CAC0'}`, background:dragging?'rgba(196,98,45,.04)':'var(--parch)', padding:'28px 20px', textAlign:'center', cursor:'pointer', transition:'all .2s', marginBottom:12 }}>
         <ImagePlus size={28} style={{ color:'var(--stone)', margin:'0 auto 8px' }}/>
         <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.85rem', color:'var(--stone)', marginBottom:4 }}>Click or drag images here</p>
-        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'#B0A090' }}>JPG, PNG, WEBP · Max 5MB each · Up to 7 images</p>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'.72rem', color:'#B0A090' }}>JPG, PNG, WEBP · Max 5MB each · Up to {MAX_PRODUCT_IMAGES} images</p>
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)}/>
       </div>
       {images.length > 0 && (

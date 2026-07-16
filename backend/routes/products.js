@@ -108,6 +108,8 @@ router.post('/', protect, artistOnly, async (req, res) => {
     if (!artistProfile) return res.status(404).json({ message: 'Artist profile not found' });
 
     const uploadedImages = (req.files || []).map(f => f.path);
+    if (uploadedImages.length === 0) return res.status(400).json({ message: 'Please add at least one product image' });
+    if (uploadedImages.length > 8) return res.status(400).json({ message: 'A product can have up to 8 images' });
 
     const {
       name, description, price, comparePrice,
@@ -148,6 +150,7 @@ router.put('/:id', protect, artistOnly, async (req, res) => {
     if (!existing) return res.status(404).json({ message: 'Product not found or unauthorized' });
 
     const newImages = (req.files || []).map(f => f.path);
+    if (newImages.length > 8) return res.status(400).json({ message: 'A product can have up to 8 images' });
 
     if (newImages.length > 0 && existing.images?.length > 0) {
       for (const imgUrl of existing.images) {

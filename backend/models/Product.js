@@ -6,7 +6,13 @@ const productSchema = new mongoose.Schema({
   description: { type: String, required: true },
   price: { type: Number, required: true, min: 0 },
   comparePrice: { type: Number, default: 0 },
-  images: [{ type: String }],
+  images: {
+    type: [{ type: String }],
+    validate: {
+      validator: (images) => Array.isArray(images) && images.length <= 8,
+      message: 'A product can have up to 8 images'
+    }
+  },
   category: {
     type: String,
     enum: ['Paintings', 'Pottery', 'Jewelry', 'Textiles', 'Woodwork', 'Metalwork', 'Leather', 'Glass', 'Paper', 'Other'],

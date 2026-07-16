@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || 'ucraft_admin_secret_2025';
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
 
 const STATUS_COLORS = {
@@ -21,9 +20,13 @@ const STATUS_OPTIONS = ['placed','confirmed','processing','shipped','delivered',
 
 const req = (path, opts = {}) =>
   fetch(`${BASE}/admin${path}`, {
-    headers: { 'x-admin-key': ADMIN_KEY, 'Content-Type': 'application/json' },
+    headers: { 'x-admin-key': sessionStorage.getItem('ucraft_admin_key') || '', 'Content-Type': 'application/json' },
     ...opts,
-  }).then(r => r.json());
+  }).then(async (r) => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Admin request failed');
+    return data;
+  });
 
 function StatCard({ icon: Icon, label, value, color }) {
   return (
@@ -102,8 +105,13 @@ export default function AdminDashboard() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (keyInput === ADMIN_KEY) { setAuth(true); loadAll(); toast.success('Welcome, Admin 👑'); }
-    else toast.error('Wrong admin key');
+    sessionStorage.setItem('ucraft_admin_key', keyInput);
+    setAuth(true);
+    loadAll().then(() => toast.success('Welcome, Admin')).catch((err) => {
+      sessionStorage.removeItem('ucraft_admin_key');
+      setAuth(false);
+      toast.error(err.message || 'Wrong admin key');
+    });
   };
 
   const loadAll = async () => {
@@ -241,7 +249,7 @@ export default function AdminDashboard() {
             <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'1px solid #E8DDD4', padding:'6px 12px', fontFamily:"'DM Sans',sans-serif", fontSize:'.75rem', color:'var(--stone)', cursor:'pointer' }}>
               <RefreshCw size={12}/> Refresh
             </button>
-            <button onClick={() => setAuth(false)} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'1px solid #FECACA', padding:'6px 12px', fontFamily:"'DM Sans',sans-serif", fontSize:'.75rem', color:'#B91C1C', cursor:'pointer' }}>
+            <button onClick={() => { sessionStorage.removeItem('ucraft_admin_key'); setAuth(false); }} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'1px solid #FECACA', padding:'6px 12px', fontFamily:"'DM Sans',sans-serif", fontSize:'.75rem', color:'#B91C1C', cursor:'pointer' }}>
               <LogOut size={12}/> Logout
             </button>
           </div>

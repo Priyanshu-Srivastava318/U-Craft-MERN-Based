@@ -18,7 +18,9 @@ const transporter = hasSmtpConfig
   : null;
 
 const resend = hasResendConfig ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM = process.env.EMAIL_FROM || (process.env.EMAIL_USER ? `UCraft <${process.env.EMAIL_USER}>` : 'U-Craft <onboarding@resend.dev>');
+const SMTP_FROM = process.env.SMTP_FROM || process.env.EMAIL_FROM || (process.env.EMAIL_USER ? `UCraft <${process.env.EMAIL_USER}>` : undefined);
+const RESEND_FROM = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'U-Craft <onboarding@resend.dev>';
+const preferResend = Boolean(process.env.RESEND_FROM || (!hasSmtpConfig && hasResendConfig));
 
 // ── Base HTML wrapper ────────────────────────────────────────
 const baseTemplate = (content) => `
@@ -115,16 +117,32 @@ const renderStages = (currentStatus) => {
 
 // ── Send helper ──────────────────────────────────────────────
 const send = async ({ to, subject, html }) => {
-  if (transporter) {
-    await transporter.sendMail({ from: FROM, to, subject, html });
-    return;
+  const errors = [];
+
+  const sendWithResend = async () => {
+    if (!resend) return false;
+    await resend.emails.send({ from: RESEND_FROM, to, subject, html });
+    return true;
+  };
+
+  const sendWithSmtp = async () => {
+    if (!transporter) return false;
+    await transporter.sendMail({ from: SMTP_FROM, to, subject, html });
+    return true;
+  };
+
+  const attempts = preferResend ? [sendWithResend, sendWithSmtp] : [sendWithSmtp, sendWithResend];
+  for (const attempt of attempts) {
+    try {
+      if (await attempt()) return;
+    } catch (err) {
+      errors.push(err.message);
+    }
   }
 
-  if (resend) {
-    await resend.emails.send({ from: FROM, to, subject, html });
-    return;
+  if (errors.length) {
+    throw new Error(`Email send failed: ${errors.join(' | ')}`);
   }
-
   throw new Error('Email service is not configured. Add EMAIL_USER/EMAIL_PASS or RESEND_API_KEY.');
 };
 

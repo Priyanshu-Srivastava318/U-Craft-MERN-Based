@@ -2,9 +2,12 @@ const express = require("express");
 const router  = express.Router();
 
 // ── Admin Key Auth ────────────────────────────────────────────────────────────
-const ADMIN_KEY = process.env.ADMIN_KEY || "ucraft_admin_secret_2025";
+const ADMIN_KEY = process.env.ADMIN_KEY;
 
 router.use((req, res, next) => {
+  if (!ADMIN_KEY) {
+    return res.status(503).json({ error: "Admin access is not configured" });
+  }
   const key = req.headers["x-admin-key"];
   if (!key || key !== ADMIN_KEY)
     return res.status(401).json({ error: "Unauthorized" });
