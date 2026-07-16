@@ -121,13 +121,16 @@ const send = async ({ to, subject, html }) => {
 
   const sendWithResend = async () => {
     if (!resend) return false;
-    await resend.emails.send({ from: RESEND_FROM, to, subject, html });
+    const result = await resend.emails.send({ from: RESEND_FROM, to, subject, html });
+    const messageId = result?.data?.id || result?.id || 'unknown';
+    console.log(`Email accepted by resend for ${to}; id=${messageId}; from=${RESEND_FROM}`);
     return true;
   };
 
   const sendWithSmtp = async () => {
     if (!transporter) return false;
-    await transporter.sendMail({ from: SMTP_FROM, to, subject, html });
+    const result = await transporter.sendMail({ from: SMTP_FROM, to, subject, html });
+    console.log(`Email accepted by smtp for ${to}; messageId=${result.messageId || 'unknown'}; from=${SMTP_FROM}`);
     return true;
   };
 
